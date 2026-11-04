@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>quicktime-player harness</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; }
+  #root { position: absolute; inset: 0; display: flex; }
+  #root > * { flex: 1 1 auto; min-width: 0; min-height: 0; }
+  .pane { width: 720px; height: 480px; margin: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+<script>
+  // ── stand in for the DSH module loader ────────────────────────────────────
+  window.__captured = null
+  window.__ModuleLoader__ = {
+    load: function (definition) { window.__captured = definition },
+  }
+
+  // ── stand in for the Host: /quicktime/source answers with the local file ──
+  var realFetch = window.fetch.bind(window)
+  window.__diag = []
+  window.fetch = function (input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url) || ''
+    if (url.indexOf('/quicktime/source') === 0) {
+      return Promise.resolve(new Response(JSON.stringify({
+        url: '/test/sample.mp4',
+        transport: 'harness',
+        size: 2121510,
+        mime: 'video/mp4',
+        name: 'sample.mp4',
+        absolutePath: '/Users/zhuoru/dsh-quickTime-Player/test/sample.mp4',
+      }), { status: 200, headers: { 'content-type': 'application/json' } }))
+    }
+    if (url.indexOf('/quicktime/diag') === 0) {
+      try { window.__diag.push(JSON.parse((init && init.body) || '{}')) } catch (error) {}
+      return Promise.resolve(new Response('{"ok":true}', { status: 200 }))
+    }
+    return realFetch(input, init)
+  }
+
+  // ── diagnostics channel for the CDP driver ────────────────────────────────
+  window.__errors = []
+  window.addEventListener('error', function (event) {
+    window.__errors.push(String((event.error && event.error.stack) || event.message))
+  })
+  window.addEventListener('unhandledrejection', function (event) {
+    window.__errors.push(String((event.reason && event.reason.stack) || event.reason))
+  })
+</script>
+<script src="../client.js"></script>
+<script>
+  ;(function () {
+    var React = window.React
+    var definition = window.__captured
+    var result = { stage: 'start' }
+    try {
+      var mod = definition.factory(function (name) {
+        if (name === 'react') return window.React
+        if (name === 'react/jsx-runtime') return { jsx: null, jsxs: null }
+        throw new Error('unexpected require: ' + name)
+      })
+      var captured = { previews: [], slots: [], tabTypes: [] }
+      var quietEffect = function (factory) { var disposer = factory(); return typeof disposer === 'function' ? disposer : function () {} }
+      mod.apply({
+        effect: quietEffect,
+        documentPreviews: { register: function (definition) { captured.previews.push(definition); return function () {} } },
+        slots: {
+          inject: function (name, factory) { return factory() },
+          register: function (options, component) { captured.slots.push({ options: options, component: component }); return function () {} },
+        },
+        get: function () { return undefined },
+        inject: function (deps, callback) {
+          callback({
+            effect: quietEffect,
+            sidebarRightTabs: { register: function (definition) { captured.tabTypes.push(definition); return function () {} } },
+            slots: {
+              inject: function (name, factory) { return factory() },
+              register: function (options, component) { captured.slots.push({ options: options, component: component }); return function () {} },
+            },
+          })
+        },
+      })
+      result.stage = 'apply-ok'
+      result.previews = captured.previews.length
+      result.slots = captured.slots.length
+
+      var mode = new URLSearchParams(location.search).get('mode') || 'tab'
+      var props = mode === 'body'
+        ? {
+            resourceAddress: 'dsh-resource://file/session/session-1/test/sample.mp4',
+            content: { kind: 'renderer', revision: 1, loaded: function () {}, failed: function () {}, reload: function () {} },
+            wrap: false,
+            scrollportRef: function () {},
+            addResource: function () {},
+            setResources: function () {},
+            sessionId: 'session-1',
+          }
+        : {
+            sessionId: 'session-1',
+            useTabInfo: function () {
+              var address = mode === 'empty'
+                ? 'dsh-pane://quicktime-player-video'
+                : 'dsh-resource://file/session/session-1/test/sample.mp4'
+              return { tab: { id: 'tab-1', contentId: address } }
+            },
+          }
+
+      var paneSlot = captured.slots.filter(function (entry) { return entry.options.name === 'sidebar.right.pane.tab' })[0]
+      var Component = mode === 'body' ? captured.slots[0].component : paneSlot.component
+      window.__feedLocal = async function () {
+        var response = await realFetch('/test/sample.mp4')
+        var blob = await response.blob()
+        var file = new File([blob], 'dropped.mp4', { type: 'video/mp4' })
+        var dataTransfer = new DataTransfer()
+        dataTransfer.items.add(file)
+        var zone = document.querySelector('.qtp-drop')
+        if (!zone) throw new Error('no drop zone')
+        zone.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dataTransfer }))
+        return true
+      }
+      window.__reactRoot = window.ReactDOM.createRoot(document.getElementById('root'))
+      window.__reactRoot.render(
+        React.createElement('div', { className: 'pane' }, React.createElement(Component, props)),
+      )
+      result.stage = 'rendered'
+    } catch (error) {
+      result.stage = 'failed'
+      result.error = String((error && error.stack) || error)
+      window.__errors.push(result.error)
+    }
+    window.__harnessResult = result
+  })()
+</script>
+</body>
+</html>

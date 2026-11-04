@@ -1,0 +1,7 @@
+# dsh-quicktime-player bundle patch
+#
+# Loads the package's main entry as the Host half (a plain Cordis plugin) and,
+# through `dsh.client`, its ./client bundle as the browser half.
+- insert:
+    - id: quicktime-player
+      name: dsh-quicktime-player
