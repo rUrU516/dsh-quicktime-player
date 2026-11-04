@@ -654,14 +654,6 @@ window.__ModuleLoader__.load({
               if (event.shiftKey) nudge(1)
               else stepFrames(1)
               break
-            case 'j':
-            case 'J':
-              nudge(-10)
-              break
-            case 'l':
-            case 'L':
-              nudge(10)
-              break
             case 'ArrowUp':
               setVolume(function (value) { return Math.min(1, value + 0.05) })
               setMuted(false)

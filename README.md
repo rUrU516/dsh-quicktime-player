@@ -36,7 +36,6 @@ Reopen the window once so the client bundle is picked up.
 | <kbd>Space</kbd> / <kbd>K</kbd> | play / pause |
 | <kbd>←</kbd> <kbd>→</kbd> | one frame back / forward |
 | <kbd>Shift</kbd> + <kbd>←</kbd> <kbd>→</kbd> | ±1 s |
-| <kbd>J</kbd> / <kbd>L</kbd> | ±10 s |
 | <kbd>↑</kbd> <kbd>↓</kbd> | volume |
 | <kbd>M</kbd> | mute |
 | <kbd>F</kbd> / <kbd>Enter</kbd> | fullscreen |
