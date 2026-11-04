@@ -2,7 +2,7 @@
 
 A sidebar video player for **DeepSeek Harness** — streaming playback with seek, wheel zoom and drag pan.
 
-![player](https://cdn.jsdelivr.net/npm/dsh-quicktime-player/docs/screenshot.jpg)
+![the player docked in the right sidebar](https://raw.githubusercontent.com/rUrU516/dsh-quicktime-player/main/docs/screenshot.jpg)
 
 ## Features
 
