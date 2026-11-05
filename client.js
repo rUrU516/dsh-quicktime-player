@@ -66,6 +66,7 @@ window.__ModuleLoader__.load({
         rows: [
           { label: '\u526a\u8f91\u5207\u7247', icon: 'scissors', text: '\u70b9\u4e24\u4e0b\u6807\u8bb0\uff0c\u60ac\u505c\u53ef\u4fdd\u5b58' },
           { label: '\u590d\u5236\u5f53\u524d\u5e27', icon: 'camera', text: 'PNG \u8fdb\u526a\u8d34\u677f' },
+          { label: '\u68c0\u67e5\u66f4\u65b0', icon: 'cloud', text: '\u70b9\u4e00\u4e0b\uff0c\u5f39\u7a97\u544a\u8bc9\u4f60\u6709\u6ca1\u6709\u65b0\u7248' },
         ],
       },
     ]
@@ -171,13 +172,13 @@ window.__ModuleLoader__.load({
       '@keyframes qtp-toast-in{from{opacity:0;transform:translate(-50%,-46%) scale(.96)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}',
       '.qtp-helpLayer{position:absolute;inset:0;z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;background:rgba(7,8,10,.28);animation:qtp-help-in .14s ease-out;text-align:center}',
       '@keyframes qtp-help-in{from{opacity:0}to{opacity:1}}',
-      '.qtp-guide{position:absolute;left:12px;top:44px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 96px);overflow:auto;box-sizing:border-box;padding:11px 13px;border-radius:12px;background:rgba(12,14,18,.9);border:.5px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.55);color:#e8ebf0;font-size:12px;line-height:1.32;text-align:left}',
-      '.qtp-guideHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:.5px solid rgba(255,255,255,.10)}',
+      '.qtp-guide{position:absolute;left:12px;top:44px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 136px);overflow:auto;box-sizing:border-box;padding:11px 13px;border-radius:12px;background:rgba(12,14,18,.9);border:.5px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.55);color:#e8ebf0;font-size:11.5px;line-height:1.26;text-align:left}',
+      '.qtp-guideHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:4px;border-bottom:.5px solid rgba(255,255,255,.10)}',
       '.qtp-guideTitle{font-size:13px;font-weight:560;color:#f4f6f9}',
       '.qtp-guideHint{font-size:11px;color:#8f96a2;white-space:nowrap}',
-      '.qtp-guideGroup{padding-top:6px}',
+      '.qtp-guideGroup{padding-top:4px}',
       '.qtp-guideGroupTitle{font-size:10.5px;letter-spacing:.04em;color:#9aa2ae;padding-bottom:3px}',
-      '.qtp-guideRow{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start;padding:1.5px 0}',
+      '.qtp-guideRow{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start;padding:1px 0}',
       '.qtp-guideLabel{color:#cfd5de;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.qtp-guideValue{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}',
       '.qtp-guideIcon{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:5px;background:rgba(255,255,255,.06);border:.5px solid rgba(255,255,255,.14);color:#dfe3ea}',
@@ -1163,6 +1164,19 @@ window.__ModuleLoader__.load({
       ])
     }
 
+    /** Update glyph: a cloud with a downward arrow. */
+    function IconCloudUpdate() {
+      return h('svg', { viewBox: '0 0 16 16', width: 18, height: 18, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
+        h('path', {
+          key: 'c',
+          d: 'M5.1 10.1h5.7a2.3 2.3 0 0 0 .2-4.6 3.3 3.3 0 0 0-6.3-.7 2.6 2.6 0 0 0 .4 5.3z',
+          stroke: 'currentColor', strokeWidth: 1.35, strokeLinejoin: 'round',
+        }),
+        h('path', { key: 'a', d: 'M8 11.6v2.4', stroke: 'currentColor', strokeWidth: 1.35, strokeLinecap: 'round' }),
+        h('path', { key: 'b', d: 'M6.6 12.9 8 14.3 9.4 12.9', stroke: 'currentColor', strokeWidth: 1.35, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+      ])
+    }
+
     /** Busy glyph: an open ring that spins while the check is in flight. */
     function IconSpinner() {
       return h('svg', { viewBox: '0 0 16 16', width: 18, height: 18, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
@@ -1459,7 +1473,7 @@ window.__ModuleLoader__.load({
           var rows = group.rows.map(function (row) {
             var value = []
             if (row.icon) {
-              var glyph = { scissors: IconScissors, camera: CopyGlyph, volume: IconVolume, expand: IconExpand, rate: null }[row.icon]
+              var glyph = { scissors: IconScissors, camera: CopyGlyph, volume: IconVolume, expand: IconExpand, cloud: IconCloudUpdate, rate: null }[row.icon]
               value.push(h('span', { key: 'i', className: 'qtp-guideIcon' }, row.icon === 'rate' ? h('span', { key: 'r', className: 'qtp-guideRate' }, '1\u00d7') : h(glyph, { key: 'g' })))
             }
             if (row.keys) {
@@ -1526,7 +1540,7 @@ window.__ModuleLoader__.load({
             event.stopPropagation()
             checkUpdate()
           },
-        }, checking ? h(IconSpinner) : h(IconRefresh)),
+        }, checking ? h(IconSpinner) : h(IconCloudUpdate)),
         h('button', {
           key: 'copyBtn',
           className: 'qtp-helpBtn qtp-copyBtn',

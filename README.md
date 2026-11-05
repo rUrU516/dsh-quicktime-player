@@ -23,6 +23,8 @@ A sidebar video player for **DeepSeek Harness** — streaming playback with seek
 - **Trim a range.** The scissors button drops a marker at the playhead; two markers survive, linked by a dashed line,
   and hovering the scissors reveals save/clear. Saving runs the Host's `ffmpeg` with a stream copy, so the clip is
   byte-identical to the source — no re-encode, cut on the nearest keyframe. Without `ffmpeg` the button says so.
+- **Check for updates.** The cloud button next to the camera asks the Host for this package's installed version and
+  the registry's latest, then reports the answer in a small dialog. Manual only: no polling, no badge, no auto-install.
 - **Built-in guide.** The `?` in the corner overlays a nearly invisible, click-through sheet with one row per
   feature — keys, gestures and the control glyphs themselves.
 - **Keyboard is never stolen.** While focus is inside the pane — even on a slider — <kbd>Space</kbd> and the arrows

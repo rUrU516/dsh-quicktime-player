@@ -60,8 +60,13 @@ test/               smoke (render) and browser (real Chromium via CDP) harnesses
 
 - `GET <prefix>/version` reads the running package's version from its own `package.json` and asks
   `registry.npmjs.org/dsh-quicktime-player/latest` (6 s timeout). The client shows the result in a centred dialog.
-- Deliberately manual: no background polling, no badge, no auto-install. The earlier proposal (daily check, red
-  exclamation, one-click update through `pluginManager.installBundle`) is still on the table but unbuilt.
+- Deliberately manual: no background polling, no badge, no auto-install. The button uses a cloud-with-arrow glyph;
+  while the request is in flight it swaps to a spinning ring. The earlier proposal (daily check, red exclamation,
+  one-click update through `pluginManager.installBundle`) is still on the table but unbuilt.
+
+## Released as 0.2.0
+
+Copy frame, clip export, the row-based guide, the larger controls and the manual update check all ship here.
 
 ## Open
 
