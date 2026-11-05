@@ -43,11 +43,11 @@ window.__ModuleLoader__.load({
      */
     var HELP_CALLOUTS = [
       { key: 'play', side: 'left', label: '\u64ad\u653e / \u6682\u505c', keys: ['Space'], hint: '\u70b9\u753b\u9762', accent: true },
-      { key: 'clock', side: 'left', label: '\u65f6\u95f4 / \u5e27\u53f7', hint: '\u70b9\u4e00\u4e0b\u5207\u6362' },
-      { key: 'progress', side: 'left', label: '\u62d6\u52a8\u8fdb\u5ea6', hint: '\u5b9a\u4f4d' },
+      { key: 'clock', side: 'left', label: '\u65f6\u95f4 / \u5e27\u53f7', keys: ['\u2190', '\u2192'], hint: '\u9010\u5e27' },
+      { key: 'progress', side: 'left', label: '\u62d6\u52a8\u8fdb\u5ea6', keys: ['Shift', '\u2190\u2192'], hint: '\u00b11 \u79d2' },
       { key: 'rate', side: 'right', label: '\u500d\u901f', keys: ['0.2\u00d7\u20135\u00d7'] },
       { key: 'loop', side: 'right', label: '\u5faa\u73af' },
-      { key: 'mute', side: 'right', label: '\u97f3\u91cf', hint: '\u60ac\u505c\u5f39\u51fa' },
+      { key: 'mute', side: 'right', label: '\u97f3\u91cf' },
       { key: 'pip', side: 'right', label: '\u753b\u4e2d\u753b' },
       { key: 'fs', side: 'right', label: '\u5168\u5c4f', hint: '\u53cc\u51fb\u753b\u9762' },
       { key: 'help', side: 'top', label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
@@ -130,7 +130,7 @@ window.__ModuleLoader__.load({
       '.qtp-helpArrows{position:absolute;inset:0;overflow:visible;pointer-events:none}',
       '.qtp-arrow{fill:none;stroke:rgba(214,226,255,.72);stroke-width:1.5;stroke-dasharray:6 6;stroke-linecap:round;marker-end:url(#qtp-arrow-head)}',
       '.qtp-arrow[data-accent=true]{stroke:rgba(127,178,255,.95);marker-end:url(#qtp-arrow-head-accent)}',
-      '.qtp-callout{position:absolute;display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;box-sizing:border-box;border-radius:8px;background:rgba(12,14,18,.84);border:.5px solid rgba(255,255,255,.14);color:#eef1f5;font-size:12px;line-height:1;white-space:nowrap;overflow:hidden}',
+      '.qtp-callout{position:absolute;display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;box-sizing:border-box;border-radius:8px;background:rgba(12,14,18,.94);border:.5px solid rgba(255,255,255,.14);color:#eef1f5;font-size:12px;line-height:1;white-space:nowrap;overflow:hidden}',
       '.qtp-calloutLabel{flex:none;color:#f2f5f9}',
       '.qtp-calloutKey{flex:none;font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.10);border:.5px solid rgba(255,255,255,.16);border-radius:4px;padding:0 5px;color:#dfe3ea}',
       '.qtp-calloutHint{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#98a0ac;font-size:11px}',
@@ -1130,9 +1130,9 @@ window.__ModuleLoader__.load({
         if (!pane) return
         var compute = function () {
           var rect = pane.getBoundingClientRect()
-          var capWidth = Math.max(96, Math.min(178, Math.round(rect.width * 0.46)))
+          var capWidth = Math.max(104, Math.min(196, Math.round(rect.width * 0.5)))
           var capHeight = 28
-          var gap = 10
+          var gap = 8
           var barSpace = 86
           var items = []
           HELP_CALLOUTS.forEach(function (spec) {
@@ -1165,18 +1165,20 @@ window.__ModuleLoader__.load({
                 ' L ' + lineX + ' ' + (item.anchorY - 6)
             })
           }
-          // Interleave the two clusters on alternate rows so cards never touch.
+          // The right cluster starts above the left one, so no two cards share a row.
           stack(leftItems, 0)
-          stack(rightItems, 1)
+          stack(rightItems, leftItems.length)
           topItems.forEach(function (item) {
             item.capsule = {
-              left: Math.max(12, rect.width - 12 - capWidth),
-              top: 78,
+              left: Math.max(12, rect.width - 12 - capWidth - 34),
+              top: 40,
               width: capWidth,
               height: capHeight,
             }
-            var lineX = clamp(item.anchorX, item.capsule.left + 12, item.capsule.left + capWidth - 12)
-            item.path = 'M ' + lineX + ' ' + item.capsule.top + ' L ' + lineX + ' ' + (item.anchorY + 16)
+            // short connector from the card's right edge to the button beside it
+            var fromX = item.capsule.left + capWidth - 4
+            var fromY = item.capsule.top + capHeight / 2
+            item.path = 'M ' + fromX + ' ' + fromY + ' L ' + (item.anchorX - 14) + ' ' + (item.anchorY + 12)
           })
           setAnnotations({ width: rect.width, height: rect.height, items: items })
         }
@@ -1216,7 +1218,9 @@ window.__ModuleLoader__.load({
               style: { left: item.capsule.left + 'px', top: item.capsule.top + 'px', width: item.capsule.width + 'px' },
             }, [
               h('span', { key: 'l', className: 'qtp-calloutLabel' }, item.spec.label),
-              item.spec.keys ? h('span', { key: 'k', className: 'qtp-calloutKey' }, item.spec.keys[0]) : null,
+              item.spec.keys ? item.spec.keys.map(function (key, index) {
+                return h('span', { key: 'k' + index, className: 'qtp-calloutKey' }, key)
+              }) : null,
               item.spec.hint ? h('span', { key: 'h', className: 'qtp-calloutHint' }, item.spec.hint) : null,
             ]))
           })
