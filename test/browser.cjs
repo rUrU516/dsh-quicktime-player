@@ -612,7 +612,7 @@ async function runMode(cdp, base, mode, options = {}) {
       if (!rem.titles || !rem.titles.some((t) => t && t.includes('文件管理器'))) bad.push('remote: no reveal button')
       const openCall = (rem.calls || []).find((u) => u.includes('/quicktime/open') && u.includes('action=open'))
       const revealCall = (rem.calls || []).find((u) => u.includes('action=reveal'))
-      if (!openCall || !openCall.includes('path=test%2Fsample.mp4')) bad.push(`remote: open did not carry the file path (${openCall})`)
+      if (!openCall || !openCall.includes('path=test/sample.mp4')) bad.push(`remote: open did not carry the file path (${openCall})`)
       if (!revealCall) bad.push('remote: reveal was not requested with action=reveal')
     }
     const uc = i.updateCheck
