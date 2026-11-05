@@ -3,9 +3,14 @@
 Ideas the user raised that are deliberately parked. Each entry says what was asked, in their words where possible,
 and what would have to be true before it is worth building.
 
-## Feedback board
+## Feedback board — shipped as a link (0.4.0)
 
 > "我希望提供一个这个留言板，然后 maybe 就会自动转成 pr 或者什么的，然后能够让我知道大家的反馈和希望修改的地方"
+
+**Decision (2026-11):** no form service, no server, no token. The guide card ends with a single link to the GitHub
+new-issue form (`.github/ISSUE_TEMPLATE/feedback.yml`), opened through the Host's allowlisted `/quicktime/link`
+route; if that fails the URL is copied. Everything else below stays as the record of why the fancier options were
+rejected.
 
 A place inside the player where a user can leave feedback, and a mechanism that turns that feedback into something the
 maintainer sees — a GitHub issue/PR, or a digest.
