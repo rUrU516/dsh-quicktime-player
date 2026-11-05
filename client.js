@@ -45,11 +45,13 @@ window.__ModuleLoader__.load({
       { key: 'play', side: 'left', label: '\u64ad\u653e / \u6682\u505c', keys: ['Space'], hint: '\u70b9\u753b\u9762', accent: true },
       { key: 'clock', side: 'left', label: '\u65f6\u95f4 / \u5e27\u53f7', keys: ['\u2190', '\u2192'], hint: '\u9010\u5e27' },
       { key: 'progress', side: 'left', label: '\u62d6\u52a8\u8fdb\u5ea6', keys: ['Shift', '\u2190\u2192'], hint: '\u00b11 \u79d2' },
+      { key: 'clip', side: 'right', label: '\u6807\u8bb0\u7247\u6bb5', hint: '\u60ac\u505c\u4fdd\u5b58' },
       { key: 'rate', side: 'right', label: '\u500d\u901f', keys: ['0.2\u00d7\u20135\u00d7'] },
       { key: 'loop', side: 'right', label: '\u5faa\u73af' },
       { key: 'mute', side: 'right', label: '\u97f3\u91cf' },
       { key: 'pip', side: 'right', label: '\u753b\u4e2d\u753b' },
       { key: 'fs', side: 'right', label: '\u5168\u5c4f', hint: '\u53cc\u51fb\u753b\u9762' },
+      { key: 'gesture', side: 'center', label: '\u6eda\u8f6e\u7f29\u653e \u00b7 \u62d6\u62fd\u5e73\u79fb' },
       { key: 'copy', side: 'top', indent: 50, label: '\u590d\u5236\u5f53\u524d\u5e27', hint: 'PNG' },
       { key: 'help', side: 'top', indent: 12, label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
     ]
@@ -101,6 +103,9 @@ window.__ModuleLoader__.load({
       '.qtp-played{position:absolute;left:0;top:0;bottom:0;background:#5b9dff}',
       '.qtp-thumb{position:absolute;top:0;bottom:0;width:2px;background:#fff;border-radius:2px;opacity:0}',
       '.qtp-progress[data-hover=true] .qtp-thumb{opacity:1}',
+      '.qtp-clip{position:relative;display:flex;align-items:center}',
+      '.qtp-clipExtra{position:absolute;right:100%;top:0;display:flex;align-items:center;gap:2px;padding-right:2px;opacity:0;transform:translateX(8px);pointer-events:none;transition:opacity .16s ease,transform .16s ease}',
+      '.qtp-clip[data-open=true] .qtp-clipExtra{opacity:1;transform:none;pointer-events:auto}',
       '.qtp-mark{position:absolute;top:-18px;bottom:0;width:0;pointer-events:none;z-index:3}',
       '.qtp-markLine{position:absolute;left:-0.75px;top:18px;bottom:0;width:1.5px;border-radius:1px;background:rgba(238,241,245,.75)}',
       '.qtp-markBadge{position:absolute;left:-9px;top:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(18,20,24,.92);border:.5px solid rgba(238,241,245,.36);color:#e6eaf0}',
@@ -145,6 +150,7 @@ window.__ModuleLoader__.load({
       '.qtp-arrow{fill:none;stroke:rgba(214,226,255,.72);stroke-width:1.5;stroke-dasharray:6 6;stroke-linecap:round;marker-end:url(#qtp-arrow-head)}',
       '.qtp-arrow[data-accent=true]{stroke:rgba(127,178,255,.95);marker-end:url(#qtp-arrow-head-accent)}',
       '.qtp-callout{position:absolute;display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;box-sizing:border-box;border-radius:8px;background:rgba(12,14,18,.94);border:.5px solid rgba(255,255,255,.14);color:#eef1f5;font-size:12px;line-height:1;white-space:nowrap;overflow:hidden}',
+      '.qtp-callout[data-center=true]{transform:translateX(-50%);padding:0 12px;background:rgba(12,14,18,.78);border-color:rgba(255,255,255,.18)}',
       '.qtp-calloutLabel{flex:none;color:#f2f5f9}',
       '.qtp-calloutKey{flex:none;font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.10);border:.5px solid rgba(255,255,255,.16);border-radius:4px;padding:0 5px;color:#dfe3ea}',
       '.qtp-calloutHint{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#98a0ac;font-size:11px}',
@@ -374,6 +380,7 @@ window.__ModuleLoader__.load({
       var [timeMode, setTimeMode] = useState(0)
       var [rateOpen, setRateOpen] = useState(false)
       var [clipMarks, setClipMarks] = useState([])
+      var [clipOpen, setClipOpen] = useState(false)
 
       var fps = useVideoFps(videoRef, source !== null)
       var TIME_MODES = ['time', 'frame']
@@ -799,6 +806,52 @@ window.__ModuleLoader__.load({
         })
       }
 
+      // Feedback goes through the pane's toast, so one pill serves every action.
+      var flash = function (text) {
+        if (props.onToast) props.onToast(text)
+      }
+
+      var saveClip = function () {
+        if (clipMarks.length < 2) {
+          flash('\u5148\u7528\u526a\u5200\u6807\u4e24\u4e2a\u70b9')
+          return
+        }
+        if (!props.canExport) {
+          flash('\u5bbf\u4e3b\u4e0a\u6ca1\u6709 ffmpeg\uff0c\u6682\u4e0d\u652f\u6301\u5bfc\u51fa\u7247\u6bb5')
+          return
+        }
+        if (!path) {
+          flash('\u672c\u5730\u62d6\u5165\u7684\u6587\u4ef6\u4e0d\u80fd\u5bfc\u51fa')
+          return
+        }
+        var from = Math.min.apply(null, clipMarks)
+        var to = Math.max.apply(null, clipMarks)
+        var stamp = function (seconds) {
+          return Math.floor(seconds / 60) + 'm' + String(Math.round(seconds % 60)).padStart(2, '0') + 's'
+        }
+        var extension = (/\.[a-z0-9]+$/iu.exec(path) || ['.mp4'])[0]
+        var name = basenameOf(path).replace(/\.[^.]+$/u, '') + '.trim-' + stamp(from) + '-' + stamp(to) + extension
+        var query = new URLSearchParams({ sessionId: sessionId, path: path, from: String(from), to: String(to) })
+        flash('\u6b63\u5728\u5bfc\u51fa\u7247\u6bb5\u2026')
+        fetch(routePrefix() + '/clip?' + query.toString(), { credentials: 'same-origin' })
+          .then(function (response) {
+            if (!response.ok) return response.text().then(function (text) { throw new Error(text || ('HTTP ' + response.status)) })
+            return response.blob()
+          })
+          .then(function (blob) {
+            var url = URL.createObjectURL(blob)
+            var link = document.createElement('a')
+            link.href = url
+            link.download = name
+            link.click()
+            setTimeout(function () { URL.revokeObjectURL(url) }, 6000)
+            flash('\u5df2\u5bfc\u51fa ' + name)
+          })
+          .catch(function (error) {
+            flash('\u5bfc\u51fa\u5931\u8d25\uff1a' + String(error && error.message ? error.message : error))
+          })
+      }
+
       var marks = clipMarks.map(function (mark, index) {
         var ratio = duration > 0 ? Math.min(1, Math.max(0, mark / duration)) : 0
         return h('div', {
@@ -913,21 +966,52 @@ window.__ModuleLoader__.load({
               }, clockText()),
               h('div', { key: 'spacer', className: 'qtp-spacer' }),
 
-              h('button', {
+              h('div', {
                 key: 'clip',
-                className: 'qtp-btn',
-                'data-qtp': 'clip',
-                title: '\u6807\u8bb0\u7247\u6bb5\uff08\u8d77\u70b9 / \u7ec8\u70b9\uff09',
-                onClick: function (event) {
-                  event.stopPropagation()
-                  var video = videoRef.current
-                  var at = video ? video.currentTime : current
-                  setClipMarks(function (previous) {
-                    return previous.concat([at]).slice(-2)
-                  })
-                  wake()
-                },
-              }, h(IconScissors)),
+                className: 'qtp-clip',
+                'data-open': clipOpen ? 'true' : 'false',
+                onPointerEnter: function () { setClipOpen(true) },
+                onPointerLeave: function () { setClipOpen(false) },
+              }, [
+                h('div', { key: 'extra', className: 'qtp-clipExtra' }, [
+                  h('button', {
+                    key: 'save',
+                    className: 'qtp-btn',
+                    'data-qtp': 'clip-save',
+                    title: '\u4fdd\u5b58\u8fd9\u4e00\u6bb5',
+                    onClick: function (event) {
+                      event.stopPropagation()
+                      saveClip()
+                    },
+                  }, h(IconSave)),
+                  h('button', {
+                    key: 'clear',
+                    className: 'qtp-btn',
+                    'data-qtp': 'clip-clear',
+                    title: '\u6e05\u9664\u6e38\u6807',
+                    onClick: function (event) {
+                      event.stopPropagation()
+                      setClipMarks([])
+                      flash('\u5df2\u6e05\u9664\u6e38\u6807')
+                    },
+                  }, h(IconClear)),
+                ]),
+                h('button', {
+                  key: 'scissors',
+                  className: 'qtp-btn',
+                  'data-qtp': 'clip',
+                  title: '\u6807\u8bb0\u7247\u6bb5\uff08\u8d77\u70b9 / \u7ec8\u70b9\uff09',
+                  onClick: function (event) {
+                    event.stopPropagation()
+                    var video = videoRef.current
+                    var at = video ? video.currentTime : current
+                    setClipMarks(function (previous) {
+                      return previous.concat([at]).slice(-2)
+                    })
+                    wake()
+                  },
+                }, h(IconScissors)),
+              ]),
 
               h('div', {
                 key: 'rate',
@@ -1040,6 +1124,21 @@ window.__ModuleLoader__.load({
      * (generated by scripts/make-icon.mjs); this flat fallback only paints when
      * that request fails.
      */
+    /** Save glyph: an arrow into a tray. */
+    function IconSave() {
+      return h('svg', { viewBox: '0 0 16 16', width: 18, height: 18, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
+        h('path', { key: 'a', d: 'M8 2.6v7.1M5.1 7 L8 9.9 L10.9 7', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        h('path', { key: 'b', d: 'M3.2 12.6h9.6', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' }),
+      ])
+    }
+
+    /** Clear glyph: a small cross. */
+    function IconClear() {
+      return h('svg', { viewBox: '0 0 16 16', width: 18, height: 18, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
+        h('path', { key: 'a', d: 'M4.6 4.6 L11.4 11.4 M11.4 4.6 L4.6 11.4', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' }),
+      ])
+    }
+
     /** Scissors glyph: mark a clip in and out. */
     function IconScissors() {
       return h('svg', { viewBox: '0 0 16 16', width: 18, height: 18, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
@@ -1182,7 +1281,8 @@ window.__ModuleLoader__.load({
       var [nonce, setNonce] = useState(0)
       var [local, setLocal] = useState(null)
       var [helpOpen, setHelpOpen] = useState(false)
-      var [copyNote, setCopyNote] = useState('')
+      var [canExport, setCanExport] = useState(false)
+      var [toast, setToast] = useState('')
       var [annotations, setAnnotations] = useState(null)
       var paneRef = useRef(null)
       var [resolved, setResolved] = useState('')
@@ -1194,12 +1294,17 @@ window.__ModuleLoader__.load({
       var hasFile = path !== undefined && path !== ''
       var headerPath = hasFile ? (resolved || path) : (local ? local.name : '')
 
+      var showToast = function (text) {
+        setToast(text)
+        setTimeout(function () { setToast('') }, 1800)
+      }
+
       // Copy the current frame as a PNG: clipboard first, download as a fallback.
       var copyFrame = function () {
         var video = paneRef.current ? paneRef.current.querySelector('video') : null
         if (!video || !video.videoWidth) {
-          setCopyNote('\u8fd8\u6ca1\u6709\u753b\u9762')
-          setTimeout(function () { setCopyNote('') }, 1800)
+          showToast('\u8fd8\u6ca1\u6709\u753b\u9762')
+          setTimeout(function () { showToast('') }, 1800)
           return
         }
         var canvas = document.createElement('canvas')
@@ -1209,13 +1314,13 @@ window.__ModuleLoader__.load({
         var stamp = Math.round(video.currentTime * 1000)
         canvas.toBlob(function (blob) {
           if (!blob) {
-            setCopyNote('\u622a\u56fe\u5931\u8d25')
-            setTimeout(function () { setCopyNote('') }, 1800)
+            showToast('\u622a\u56fe\u5931\u8d25')
+            setTimeout(function () { showToast('') }, 1800)
             return
           }
           var done = function (text) {
-            setCopyNote(text)
-            setTimeout(function () { setCopyNote('') }, 1800)
+            showToast(text)
+            setTimeout(function () { showToast('') }, 1800)
           }
           if (navigator.clipboard && typeof window.ClipboardItem === 'function') {
             navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]).then(function () {
@@ -1236,6 +1341,15 @@ window.__ModuleLoader__.load({
         }, 'image/png')
       }
 
+      useEffect(function () {
+        var aborted = false
+        fetch(routePrefix() + '/capabilities', { credentials: 'same-origin' })
+          .then(function (response) { return response.ok ? response.json() : null })
+          .then(function (info) { if (!aborted && info && info.ffmpeg) setCanExport(info.ffmpeg.available === true) })
+          .catch(function () {})
+        return function () { aborted = true }
+      }, [])
+
       // Lay the annotations out against the real controls, and redo it whenever
       // the pane resizes (sidebar drag, window resize, fullscreen).
       useEffect(function () {
@@ -1255,6 +1369,10 @@ window.__ModuleLoader__.load({
 
           var items = []
           HELP_CALLOUTS.forEach(function (spec) {
+            if (spec.side === 'center') {
+              items.push({ spec: spec, anchorX: rect.width / 2, anchorY: null })
+              return
+            }
             var el = pane.querySelector('[data-qtp="' + spec.key + '"]')
             if (!el) return
             var box = el.getBoundingClientRect()
@@ -1265,6 +1383,7 @@ window.__ModuleLoader__.load({
             })
           })
 
+          var centreItems = items.filter(function (item) { return item.spec.side === 'center' })
           var leftItems = items.filter(function (item) { return item.spec.side === 'left' })
           var rightItems = items.filter(function (item) { return item.spec.side === 'right' })
           var topItems = items.filter(function (item) { return item.spec.side === 'top' })
@@ -1307,6 +1426,15 @@ window.__ModuleLoader__.load({
                 ' L ' + lineX + ' ' + (item.anchorY - 6)
             })
           }
+          centreItems.forEach(function (item) {
+            item.capsule = {
+              left: Math.round(rect.width / 2),
+              top: 46,
+              width: 0,
+              height: capHeight,
+            }
+          })
+
           stack(leftItems, 0)
           stack(rightItems, leftItems.length)
 
@@ -1349,7 +1477,9 @@ window.__ModuleLoader__.load({
               }, h('path', { d: 'M1.5 1.5 L7 5 L1.5 8.5', fill: 'none', stroke: 'rgba(127,178,255,.95)', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
             ]),
           ].concat([
-            h('g', { key: 'lines', mask: 'url(#qtp-card-mask)' }, annotations.items.map(function (item) {
+            h('g', { key: 'lines', mask: 'url(#qtp-card-mask)' }, annotations.items.filter(function (item) {
+              return typeof item.path === 'string'
+            }).map(function (item) {
               return h('path', { key: item.spec.key, d: item.path, className: 'qtp-arrow', 'data-accent': item.spec.accent ? 'true' : 'false' })
             })),
           ])))
@@ -1357,7 +1487,10 @@ window.__ModuleLoader__.load({
             children.push(h('div', {
               key: 'c-' + item.spec.key,
               className: 'qtp-callout',
-              style: { left: item.capsule.left + 'px', top: item.capsule.top + 'px', width: item.capsule.width + 'px' },
+              'data-center': item.spec.side === 'center' ? 'true' : 'false',
+              style: item.spec.side === 'center'
+                ? { left: item.capsule.left + 'px', top: item.capsule.top + 'px' }
+                : { left: item.capsule.left + 'px', top: item.capsule.top + 'px', width: item.capsule.width + 'px' },
             }, [
               h('span', { key: 'l', className: 'qtp-calloutLabel' }, item.spec.label),
               item.spec.keys ? item.spec.keys.map(function (key, index) {
@@ -1382,6 +1515,9 @@ window.__ModuleLoader__.load({
       } else if (hasFile) {
         body = h(Player, {
           key: 'v' + nonce,
+          pinned: helpOpen,
+          onToast: showToast,
+          canExport: canExport,
           sessionId: sessionId,
           path: path,
           title: basenameOf(path),
@@ -1411,7 +1547,7 @@ window.__ModuleLoader__.load({
             copyFrame()
           },
         }, h(CopyGlyph)),
-        copyNote ? h('div', { key: 'toast', className: 'qtp-toast' }, copyNote) : null,
+        toast ? h('div', { key: 'toast', className: 'qtp-toast' }, toast) : null,
         h('button', {
           key: 'helpBtn',
           className: 'qtp-helpBtn',

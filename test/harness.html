@@ -36,6 +36,15 @@
         absolutePath: '/Users/zhuoru/dsh-quickTime-Player/test/sample.mp4',
       }), { status: 200, headers: { 'content-type': 'application/json' } }))
     }
+    if (url.indexOf('/quicktime/capabilities') === 0) {
+      return Promise.resolve(new Response(JSON.stringify({ ffmpeg: { available: true, path: '/usr/bin/ffmpeg', version: 'test' } }),
+        { status: 200, headers: { 'content-type': 'application/json' } }))
+    }
+    if (url.indexOf('/quicktime/clip') === 0) {
+      window.__clipRequests = window.__clipRequests || []
+      window.__clipRequests.push(url)
+      return Promise.resolve(new Response(new Blob([new Uint8Array(4096)], { type: 'video/mp4' }), { status: 200 }))
+    }
     if (url.indexOf('/quicktime/diag') === 0) {
       try { window.__diag.push(JSON.parse((init && init.body) || '{}')) } catch (error) {}
       return Promise.resolve(new Response('{"ok":true}', { status: 200 }))

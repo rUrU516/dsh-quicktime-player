@@ -27,6 +27,9 @@
  *   extraRoots    string[] []                extra path roots allowed besides the session cwd
  */
 import { createReadStream } from 'node:fs'
+import { execFileSync, spawn } from 'node:child_process'
+import { rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { appendFile, mkdir, stat } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { randomBytes } from 'node:crypto'
@@ -241,6 +244,69 @@ function streamFile(request, res, target, size, type, extraHeaders) {
 }
 
 /**
+ * Where ffmpeg might live. GUI launches usually carry a minimal PATH, so the
+ * Homebrew prefixes are probed explicitly before falling back to PATH lookup.
+ */
+const FFMPEG_CANDIDATES = () => [
+  process.env.QTP_FFMPEG,
+  '/opt/homebrew/bin/ffmpeg',
+  '/usr/local/bin/ffmpeg',
+  'ffmpeg',
+].filter((entry) => typeof entry === 'string' && entry !== '')
+
+let ffmpegProbe
+
+/** Find a working ffmpeg once, caching both hit and miss for a minute. */
+function findFfmpeg() {
+  const now = Date.now()
+  if (ffmpegProbe !== undefined && now - ffmpegProbe.at < 60000) return ffmpegProbe.value
+  let value = null
+  for (const candidate of FFMPEG_CANDIDATES()) {
+    try {
+      const output = execFileSync(candidate, ['-version'], { encoding: 'utf8', timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] })
+      const version = String(output).split('\n')[0].trim()
+      value = { available: true, path: candidate, version }
+      break
+    } catch {
+      // try the next candidate
+    }
+  }
+  if (value === null) value = { available: false }
+  ffmpegProbe = { at: now, value }
+  return value
+}
+
+/**
+ * Render one clip with ffmpeg's stream copy: no re-encode, so the cut lands on
+ * the nearest keyframe before `from`. Resolves with the temp file path.
+ */
+function renderClip(ffmpegPath, input, from, to, target) {
+  return new Promise((resolve, reject) => {
+    const duration = Math.max(0.1, to - from)
+    const args = [
+      '-hide_banner', '-loglevel', 'error',
+      '-ss', String(from),
+      '-i', input,
+      '-t', String(duration),
+      '-c', 'copy',
+      '-avoid_negative_ts', 'make_zero',
+      '-map', '0',
+      '-y', target,
+    ]
+    const child = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    let stderr = ''
+    const timer = setTimeout(() => child.kill('SIGKILL'), 60000)
+    child.stderr.on('data', (chunk) => { if (stderr.length < 4000) stderr += String(chunk) })
+    child.on('error', (error) => { clearTimeout(timer); reject(error) })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (code === 0) resolve(target)
+      else reject(new Error(stderr.trim() || ('ffmpeg exited with ' + String(code))))
+    })
+  })
+}
+
+/**
  * Resolve one request's file, refusing anything outside the session working
  * directory (or an explicitly configured extra root).
  *
@@ -367,6 +433,57 @@ export function apply(ctx, rawConfig) {
     sendText(res, 404, 'no icon')
   }
 
+  /** `GET <prefix>/capabilities` — what this Host can actually do. */
+  const handleCapabilities = async (req, res) => {
+    const ffmpeg = findFfmpeg()
+    sendJson(res, 200, {
+      ffmpeg: ffmpeg.available
+        ? { available: true, path: ffmpeg.path, version: ffmpeg.version }
+        : { available: false },
+    })
+  }
+
+  /**
+   * `GET <prefix>/clip?sessionId&path&from&to` — cut one range out of a video
+   * and hand it back as a download. Stream copy, so the cut lands on a keyframe.
+   */
+  const handleClip = async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://dsh.internal')
+    const from = Number(url.searchParams.get('from'))
+    const to = Number(url.searchParams.get('to'))
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to - from < 0.1) {
+      throw new HttpError(400, 'a range of at least 0.1 s is required')
+    }
+    const file = await resolveRequestedFile(ctx, config, url.searchParams.get('sessionId'), url.searchParams.get('path'))
+    const ffmpeg = findFfmpeg()
+    if (!ffmpeg.available) throw new HttpError(501, 'ffmpeg is not available on this Host')
+    const extension = extname(file.target).toLowerCase() || '.mp4'
+    const target = join(tmpdir(), `qtp-clip-${randomBytes(6).toString('hex')}${extension}`)
+    try {
+      await renderClip(ffmpeg.path, file.target, Math.max(0, from), to, target)
+      const info = await stat(target)
+      if (info.size > config.maxBytes) throw new HttpError(413, 'clip exceeds the configured size limit')
+      const stamp = (seconds) => `${Math.floor(seconds / 60)}m${String(Math.round(seconds % 60)).padStart(2, '0')}s`
+      const name = `${basename(file.target, extension)}.trim-${stamp(Math.max(0, from))}-${stamp(to)}${extension}`
+      res.writeHead(200, {
+        'content-type': file.type,
+        'content-length': String(info.size),
+        'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+        'cache-control': 'no-store',
+      })
+      const stream = createReadStream(target)
+      stream.on('error', () => res.destroy())
+      res.on('close', () => {
+        stream.destroy()
+        rm(target, { force: true }).catch(() => {})
+      })
+      stream.pipe(res)
+    } catch (error) {
+      rm(target, { force: true }).catch(() => {})
+      throw error
+    }
+  }
+
   /** `GET <prefix>/_graph` — dev probe: is our client bundle in the module graph? */
   const handleGraph = async (req, res) => {
     const modules = ctx.get('clientModules')
@@ -412,6 +529,14 @@ export function apply(ctx, rawConfig) {
             return
           }
           await handleDiag(req, res)
+          return
+        }
+        if (pathname === `${config.routePrefix}/capabilities`) {
+          await handleCapabilities(req, res)
+          return
+        }
+        if (pathname === `${config.routePrefix}/clip`) {
+          await handleClip(req, res)
           return
         }
         if (pathname === `${config.routePrefix}/icon`) {

@@ -305,6 +305,34 @@ async function runMode(cdp, base, mode, options = {}) {
       return { afterTwo, afterThree, hasBadge: document.querySelectorAll('.qtp-markBadge svg').length }
     })()`, true)
 
+    // hovering the scissors reveals save + clear; both act on the marks
+    const clipHover = await evaluate(`(async () => {
+      const cluster = document.querySelector('.qtp-clip')
+      if (!cluster) return null
+      cluster.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
+      await new Promise((r) => setTimeout(r, 260))
+      const extra = cluster.querySelector('.qtp-clipExtra')
+      const style = extra ? getComputedStyle(extra) : null
+      const save = cluster.querySelector('[data-qtp="clip-save"]')
+      const clear = cluster.querySelector('[data-qtp="clip-clear"]')
+      const before = document.querySelectorAll('.qtp-mark').length
+      if (save) save.click()
+      await new Promise((r) => setTimeout(r, 250))
+      await new Promise((r) => setTimeout(r, 400))
+      const saveToast = (document.querySelector('.qtp-toast') || {}).textContent || ''
+      if (clear) clear.click()
+      await new Promise((r) => setTimeout(r, 250))
+      const after = document.querySelectorAll('.qtp-mark').length
+      return {
+        revealed: style ? style.opacity : null,
+        clickable: style ? style.pointerEvents : null,
+        saveToast,
+        clipRequests: (window.__clipRequests || []).slice(),
+        before,
+        after,
+      }
+    })()`, true)
+
     // the frame-copy button sits left of the "?" and yields a PNG
     const copyButton = await evaluate(`(() => {
       const copy = document.querySelector('.qtp-copyBtn')
@@ -368,6 +396,7 @@ async function runMode(cdp, base, mode, options = {}) {
     interactions = {
       copyRects: copyButton.value ? copyButton.value.rects : null,
       clipMarks: marks.value,
+      clipHover: clipHover.value,
       copyLeftOfHelp: copyButton.value ? copyButton.value.leftOfHelp : null,
       copySameRow: copyButton.value ? copyButton.value.sameRow : null,
       copiedFrame: copied.value,
@@ -471,6 +500,47 @@ async function runMode(cdp, base, mode, options = {}) {
     }
     if (i.spaceToggledPlayback !== true) bad.push('keys: Space did not reach the player while a slider was focused')
     if (i.pausedAfterStep !== true) bad.push('keys: frame stepping should pause playback')
+    if (i.copyLeftOfHelp !== true) bad.push('copy: the button is not left of the ? button')
+    if (!i.copiedFrame || i.copiedFrame.type !== 'image/png' || i.copiedFrame.size < 1000) {
+      bad.push(`copy: no PNG reached the clipboard (${JSON.stringify(i.copiedFrame)})`)
+    }
+    if (!i.copyToast) bad.push('copy: no feedback toast appeared')
+    else {
+      if (!i.copyToast.centred) bad.push('copy: the toast is not centred in the pane')
+      if (!i.copyToast.text || !i.copyToast.text.includes('剪')) bad.push(`copy: unexpected toast copy (${i.copyToast.text})`)
+    }
+    if (!i.helpHalo || !/rgba?\(34, 211, 238/.test(i.helpHalo)) bad.push(`help: the ? button has no cyan halo (${i.helpHalo})`)
+    if (i.helpCoversStage !== true) bad.push('help: the layer does not cover the whole pane')
+    if (i.helpClickThrough !== true) bad.push('help: the layer is not click-through')
+    if (i.clickThroughWorked !== true) bad.push('help: a click on the layer did not reach the player')
+    if (i.helpClosedAfter !== true) bad.push('help: the ? button did not close the layer')
+    const heights = (report.tab.snapshot || {}).transportHeights
+    if (!heights || heights.clock !== heights.play) bad.push(`transport: the clock is not as tall as play (${JSON.stringify(heights)})`)
+    const clipBtn = (report.tab.snapshot || {}).clipButton
+    if (!clipBtn) bad.push('clip: the scissors button is missing')
+    else if (!clipBtn.leftOfRate) bad.push('clip: the button is not left of the speed control')
+    const cm = i.clipMarks
+    if (!cm) bad.push('clip: markers could not be created')
+    else {
+      if (cm.afterTwo.length !== 2) bad.push(`clip: expected 2 markers after two clicks, got ${cm.afterTwo.length}`)
+      if (cm.afterThree.length !== 2) bad.push(`clip: expected the older marker to drop, got ${cm.afterThree.length}`)
+      if (cm.hasBadge !== 2) bad.push(`clip: markers are missing the scissors badge (${cm.hasBadge})`)
+      const lefts = cm.afterThree.map((value) => parseFloat(value))
+      if (!lefts.some((v) => v > 60 && v < 90)) bad.push(`clip: the newest marker is not at the playhead (${cm.afterThree})`)
+    }
+    const ch = i.clipHover
+    if (!ch) bad.push('clip: the hover cluster could not be inspected')
+    else {
+      if (ch.revealed !== '1') bad.push(`clip: save/clear stay hidden on hover (opacity ${ch.revealed})`)
+      if (ch.clickable !== 'auto') bad.push(`clip: save/clear are not clickable on hover (${ch.clickable})`)
+      if (!ch.saveToast || !(ch.saveToast.includes('已导出') || ch.saveToast.includes('正在导出'))) {
+        bad.push(`clip: save did not export (${ch.saveToast})`)
+      }
+      if (!ch.clipRequests || ch.clipRequests.length === 0) bad.push('clip: the Host clip route was never called')
+      else if (!/from=\d/.test(ch.clipRequests[0]) || !/to=\d/.test(ch.clipRequests[0])) bad.push(`clip: bad clip query (${ch.clipRequests[0]})`)
+      if (ch.before !== 2) bad.push(`clip: expected 2 marks before clearing, got ${ch.before}`)
+      if (ch.after !== 0) bad.push(`clip: clear left ${ch.after} marks behind`)
+    }
   }
   if (report.tab && report.tab.narrowHeader) {
     const narrow = report.tab.narrowHeader
