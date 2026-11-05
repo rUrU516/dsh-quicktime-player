@@ -18,6 +18,9 @@ A sidebar video player for **DeepSeek Harness** — streaming playback with seek
 - **Own controls.** Play/pause, time ⇄ frame number, speed slider (0.2× – 5×, 0.2 steps), loop, vertical volume
   popup, mute, picture-in-picture, fullscreen. The chrome fades out while the mouse is idle.
 - **Frame stepping.** <kbd>←</kbd> / <kbd>→</kbd> step one frame; the frame rate is measured from delivered frames.
+- **Built-in guide.** The `?` in the corner lays a nearly invisible, click-through sheet over the player and
+  points at every control with a short dashed line — play/pause, the time/frame toggle, the progress bar, rate,
+  loop, volume, picture-in-picture and fullscreen.
 - **Keyboard is never stolen.** While focus is inside the pane — even on a slider — <kbd>Space</kbd> and the arrows
   stay with the player.
 
