@@ -475,11 +475,17 @@ async function runMode(cdp, base, mode, options = {}) {
       await evaluate(`(() => { const l = document.querySelector('[data-qtp="help"]'); if (l) l.click(); return true })()`)
       await sleep(300)
       const clicked = await evaluate(`(async () => {
+        const card = document.querySelector('.qtp-guide')
         const link = document.querySelector('.qtp-guideLink')
         if (!link) return null
+        card.scrollTop = card.scrollHeight
+        await new Promise((r) => requestAnimationFrame(r))
+        const box = link.getBoundingClientRect()
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+        window.__linkHit = hit === link || (hit && link.contains(hit))
         link.click()
         await new Promise((r) => setTimeout(r, 300))
-        return (window.__linkCalls || []).slice(-1)[0] || null
+        return { call: (window.__linkCalls || []).slice(-1)[0] || null, hit: window.__linkHit === true }
       })()`, true)
       await evaluate(`(() => { const l = document.querySelector('[data-qtp="help"]'); if (l) l.click(); return true })()`)
       return clicked
@@ -507,7 +513,8 @@ async function runMode(cdp, base, mode, options = {}) {
       helpClickThrough: helpOpen.value ? helpOpen.value.clickThrough : null,
       clickThroughWorked: pausedBeforeThrough.value !== pausedAfterThrough.value,
       helpText: helpOpen.value ? helpOpen.value.text : null,
-      helpFeedback: feedbackCall.value,
+      helpFeedback: feedbackCall.value ? feedbackCall.value.call : null,
+      helpFeedbackHit: feedbackCall.value ? feedbackCall.value.hit : null,
       helpGlyph: helpOpen.value ? helpOpen.value.glyph : null,
       helpClosedAfter: helpClosedAfter.value,
       timeBefore: before.value.time,
@@ -678,6 +685,7 @@ async function runMode(cdp, base, mode, options = {}) {
     }
     if (!i.helpText || !i.helpText.includes('剪辑切片')) bad.push('help: the guide lost its clip row')
     if (!i.helpFeedback || !i.helpFeedback.includes('to=feedback')) bad.push(`help: the feedback link did not reach the Host (${i.helpFeedback})`)
+    if (i.helpFeedbackHit !== true) bad.push('help: the feedback link is not reachable by a real click (pointer-events)')
     if (!i.helpText || !i.helpText.includes('滚轮')) bad.push('help: the guide does not mention wheel zoom')
     const heights = (report.tab.snapshot || {}).transportHeights
     if (!heights || heights.clock !== heights.play) bad.push(`transport: the clock is not as tall as play (${JSON.stringify(heights)})`)

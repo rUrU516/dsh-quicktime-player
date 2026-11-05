@@ -190,7 +190,7 @@ window.__ModuleLoader__.load({
       '@keyframes qtp-toast-in{from{opacity:0;transform:translate(-50%,-46%) scale(.96)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}',
       '.qtp-helpLayer{position:absolute;inset:0;z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;background:rgba(7,8,10,.28);animation:qtp-help-in .14s ease-out;text-align:center}',
       '@keyframes qtp-help-in{from{opacity:0}to{opacity:1}}',
-      '.qtp-guide{position:absolute;left:12px;top:44px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 136px);overflow:auto;box-sizing:border-box;padding:11px 13px;border-radius:12px;background:rgba(12,14,18,.9);border:.5px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.55);color:#e8ebf0;font-size:11.5px;line-height:1.26;text-align:left}',
+      '.qtp-guide{position:absolute;left:12px;top:44px;pointer-events:auto;width:min(340px,calc(100% - 24px));max-height:calc(100% - 136px);overflow:auto;box-sizing:border-box;padding:11px 13px;border-radius:12px;background:rgba(12,14,18,.9);border:.5px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.55);color:#e8ebf0;font-size:11.5px;line-height:1.26;text-align:left}',
       '.qtp-guideHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:4px;border-bottom:.5px solid rgba(255,255,255,.10)}',
       '.qtp-guideTitle{font-size:13px;font-weight:560;color:#f4f6f9}',
       '.qtp-guideHint{font-size:11px;color:#8f96a2;white-space:nowrap}',
@@ -208,7 +208,8 @@ window.__ModuleLoader__.load({
       '.qtp-guideFootText{font-size:11px;color:#8f96a2}',
       '.qtp-guideLink{flex:none;background:transparent;border:0;padding:0;color:#7fb7ff;font-size:11.5px;cursor:pointer}',
       '.qtp-guideLink:hover{color:#a9cfff;text-decoration:underline}',
-      '.qtp-helpLayer>*{pointer-events:none}',
+      // the card is the one thing in the layer that takes the mouse
+      '.qtp-helpLayer>*:not(.qtp-guide){pointer-events:none}',
       '.qtp-helpLayerNote{font-size:11px;color:#c6ccd6;line-height:1.6;max-width:280px;text-shadow:0 1px 8px rgba(0,0,0,.85)}',
       '.qtp-empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;min-height:0}',
       '.qtp-drop{width:min(420px,100%);display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 22px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;background:rgba(255,255,255,.02);transition:border-color .15s ease,background .15s ease}',
