@@ -38,6 +38,22 @@ window.__ModuleLoader__.load({
     var IMPL_ID = 'dsh-quicktime-player/video'
 
     /**
+     * What the help layer annotates: one row per transport control. `side`
+     * decides which column the label stacks into; `accent` marks the primary action.
+     */
+    var HELP_CALLOUTS = [
+      { key: 'play', side: 'left', label: '\u64ad\u653e / \u6682\u505c', keys: ['Space'], hint: '\u70b9\u753b\u9762', accent: true },
+      { key: 'clock', side: 'left', label: '\u65f6\u95f4 / \u5e27\u53f7', hint: '\u70b9\u4e00\u4e0b\u5207\u6362' },
+      { key: 'progress', side: 'left', label: '\u62d6\u52a8\u8fdb\u5ea6', hint: '\u5b9a\u4f4d' },
+      { key: 'rate', side: 'right', label: '\u500d\u901f', keys: ['0.2\u00d7\u20135\u00d7'] },
+      { key: 'loop', side: 'right', label: '\u5faa\u73af' },
+      { key: 'mute', side: 'right', label: '\u97f3\u91cf', hint: '\u60ac\u505c\u5f39\u51fa' },
+      { key: 'pip', side: 'right', label: '\u753b\u4e2d\u753b' },
+      { key: 'fs', side: 'right', label: '\u5168\u5c4f', hint: '\u53cc\u51fb\u753b\u9762' },
+      { key: 'help', side: 'top', label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
+    ]
+
+    /**
      * Our own sidebar tab type. This is what makes "any video, from anywhere,
      * opens here" work without adapting to any other plugin: the right sidebar
      * ranks tab types by band, then by the length of the pattern that matched,
@@ -111,7 +127,13 @@ window.__ModuleLoader__.load({
       '.qtp-helpBtn[data-open=true]{opacity:1;background:rgba(38,42,50,.92);color:#e8eaed}',
       '.qtp-helpLayer{position:absolute;inset:0;z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;background:rgba(7,8,10,.28);animation:qtp-help-in .14s ease-out;text-align:center}',
       '@keyframes qtp-help-in{from{opacity:0}to{opacity:1}}',
-      '.qtp-helpLayerTitle{font-size:14px;color:#f4f6f9;text-shadow:0 1px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.9)}',
+      '.qtp-helpArrows{position:absolute;inset:0;overflow:visible;pointer-events:none}',
+      '.qtp-arrow{fill:none;stroke:rgba(214,226,255,.72);stroke-width:1.5;stroke-dasharray:6 6;stroke-linecap:round;marker-end:url(#qtp-arrow-head)}',
+      '.qtp-arrow[data-accent=true]{stroke:rgba(127,178,255,.95);marker-end:url(#qtp-arrow-head-accent)}',
+      '.qtp-callout{position:absolute;display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;box-sizing:border-box;border-radius:8px;background:rgba(12,14,18,.84);border:.5px solid rgba(255,255,255,.14);color:#eef1f5;font-size:12px;line-height:1;white-space:nowrap;overflow:hidden}',
+      '.qtp-calloutLabel{flex:none;color:#f2f5f9}',
+      '.qtp-calloutKey{flex:none;font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.10);border:.5px solid rgba(255,255,255,.16);border-radius:4px;padding:0 5px;color:#dfe3ea}',
+      '.qtp-calloutHint{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#98a0ac;font-size:11px}',
       '.qtp-helpLayer>*{pointer-events:none}',
       '.qtp-helpLayerNote{font-size:11px;color:#c6ccd6;line-height:1.6;max-width:280px;text-shadow:0 1px 8px rgba(0,0,0,.85)}',
       '.qtp-empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;min-height:0}',
@@ -819,6 +841,7 @@ window.__ModuleLoader__.load({
             h('div', {
               key: 'progress',
               ref: progressRef,
+              'data-qtp': 'progress',
               className: 'qtp-progress',
               'data-hover': hover ? 'true' : 'false',
               onPointerDown: onProgressDown,
@@ -836,9 +859,10 @@ window.__ModuleLoader__.load({
             ]),
 
             h('div', { key: 'row', className: 'qtp-row' }, [
-              h('button', { key: 'play', className: 'qtp-btn', onClick: togglePlay, title: '播放 / 暂停 (空格)' }, playing ? h(IconPause) : h(IconPlay)),
+              h('button', { key: 'play', className: 'qtp-btn', 'data-qtp': 'play', onClick: togglePlay, title: '播放 / 暂停 (空格)' }, playing ? h(IconPause) : h(IconPlay)),
               h('button', {
                 key: 'time',
+                'data-qtp': 'clock',
                 className: 'qtp-time',
                 onClick: function () { setTimeMode((timeMode + 1) % TIME_MODES.length) },
                 title: '点击切换：时间 / 帧号',
@@ -851,7 +875,7 @@ window.__ModuleLoader__.load({
                 onPointerEnter: function () { setRateOpen(true) },
                 onPointerLeave: function () { setRateOpen(false) },
               }, [
-                h('button', { key: 'b', className: 'qtp-btn qtp-rate', title: '播放速度' }, formatRate(rate)),
+                h('button', { key: 'b', className: 'qtp-btn qtp-rate', 'data-qtp': 'rate', title: '播放速度' }, formatRate(rate)),
                 rateOpen ? h('div', { key: 'p', className: 'qtp-pop' }, [
                   h('input', {
                     key: 's',
@@ -865,7 +889,7 @@ window.__ModuleLoader__.load({
                 ]) : null,
               ]),
 
-              h('button', { key: 'loop', className: 'qtp-btn', 'data-on': loop ? 'true' : 'false', onClick: function () { setLoop(!loop) }, title: '循环播放' }, h(IconLoop)),
+              h('button', { key: 'loop', className: 'qtp-btn', 'data-qtp': 'loop', 'data-on': loop ? 'true' : 'false', onClick: function () { setLoop(!loop) }, title: '循环播放' }, h(IconLoop)),
 
               h('div', {
                 key: 'vol',
@@ -873,7 +897,7 @@ window.__ModuleLoader__.load({
                 onPointerEnter: function () { setVolumeOpen(true) },
                 onPointerLeave: function () { setVolumeOpen(false) },
               }, [
-                h('button', { key: 'mute', className: 'qtp-btn', onClick: toggleMute, title: '静音 (M)' }, IconVolume(!muted && volume > 0)),
+                h('button', { key: 'mute', className: 'qtp-btn', 'data-qtp': 'mute', onClick: toggleMute, title: '静音 (M)' }, IconVolume(!muted && volume > 0)),
                 volumeOpen ? h('div', { key: 'p', className: 'qtp-pop' }, [
                   h('input', {
                     key: 's',
@@ -891,8 +915,8 @@ window.__ModuleLoader__.load({
                 ]) : null,
               ]),
 
-              h('button', { key: 'pip', className: 'qtp-btn', onClick: togglePip, title: '画中画' }, h(IconPip)),
-              h('button', { key: 'fs', className: 'qtp-btn', onClick: toggleFullscreen, title: '全屏 (F)' }, h(IconExpand)),
+              h('button', { key: 'pip', className: 'qtp-btn', 'data-qtp': 'pip', onClick: togglePip, title: '画中画' }, h(IconPip)),
+              h('button', { key: 'fs', className: 'qtp-btn', 'data-qtp': 'fs', onClick: toggleFullscreen, title: '全屏 (F)' }, h(IconExpand)),
             ]),
           ]),
         ]),
@@ -1084,6 +1108,8 @@ window.__ModuleLoader__.load({
       var [nonce, setNonce] = useState(0)
       var [local, setLocal] = useState(null)
       var [helpOpen, setHelpOpen] = useState(false)
+      var [annotations, setAnnotations] = useState(null)
+      var paneRef = useRef(null)
       var [resolved, setResolved] = useState('')
 
       useEffect(function () {
@@ -1092,6 +1118,111 @@ window.__ModuleLoader__.load({
 
       var hasFile = path !== undefined && path !== ''
       var headerPath = hasFile ? (resolved || path) : (local ? local.name : '')
+
+      // Lay the annotations out against the real controls, and redo it whenever
+      // the pane resizes (sidebar drag, window resize, fullscreen).
+      useEffect(function () {
+        if (!helpOpen) {
+          setAnnotations(null)
+          return
+        }
+        var pane = paneRef.current
+        if (!pane) return
+        var compute = function () {
+          var rect = pane.getBoundingClientRect()
+          var capWidth = Math.max(96, Math.min(178, Math.round(rect.width * 0.46)))
+          var capHeight = 28
+          var gap = 8
+          var barSpace = 86
+          var items = []
+          HELP_CALLOUTS.forEach(function (spec) {
+            var el = pane.querySelector('[data-qtp="' + spec.key + '"]')
+            if (!el) return
+            var box = el.getBoundingClientRect()
+            items.push({
+              spec: spec,
+              anchorX: box.left - rect.left + box.width / 2,
+              anchorY: box.top - rect.top,
+            })
+          })
+          var leftItems = items.filter(function (item) { return item.spec.side === 'left' })
+          var rightItems = items.filter(function (item) { return item.spec.side === 'right' })
+          var topItems = items.filter(function (item) { return item.spec.side === 'top' })
+          var stack = function (list, left) {
+            list.forEach(function (item, index) {
+              item.capsule = {
+                left: left,
+                top: rect.height - barSpace - capHeight - index * (capHeight + gap),
+                width: capWidth,
+                height: capHeight,
+              }
+            })
+          }
+          stack(leftItems, 12)
+          stack(rightItems, Math.max(12, rect.width - 12 - capWidth))
+          topItems.forEach(function (item) {
+            item.capsule = {
+              left: Math.max(12, rect.width - 12 - capWidth - 38),
+              top: 46,
+              width: capWidth,
+              height: capHeight,
+            }
+          })
+          items.forEach(function (item) {
+            var capsule = item.capsule
+            var fromX = item.spec.side === 'right' ? capsule.left : capsule.left + capsule.width
+            var fromY = capsule.top + capsule.height / 2
+            var toX = item.anchorX
+            var toY = item.anchorY - 6
+            var midY = fromY + (toY - fromY) * 0.55
+            item.path = 'M ' + fromX + ' ' + fromY +
+              ' C ' + fromX + ' ' + midY + ', ' + toX + ' ' + midY + ', ' + toX + ' ' + toY
+          })
+          setAnnotations({ width: rect.width, height: rect.height, items: items })
+        }
+        compute()
+        var observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(compute)
+        if (observer) observer.observe(pane)
+        return function () { if (observer) observer.disconnect() }
+      }, [helpOpen])
+
+      var renderHelpLayer = function () {
+        var children = []
+        if (annotations !== null) {
+          children.push(h('svg', {
+            key: 'arrows',
+            className: 'qtp-helpArrows',
+            width: annotations.width,
+            height: annotations.height,
+            viewBox: '0 0 ' + annotations.width + ' ' + annotations.height,
+          }, [
+            h('defs', { key: 'd' }, [
+              h('marker', {
+                key: 'a', id: 'qtp-arrow-head', viewBox: '0 0 10 10', refX: 7, refY: 5,
+                markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
+              }, h('path', { d: 'M1.5 1.5 L7 5 L1.5 8.5', fill: 'none', stroke: 'rgba(214,226,255,.85)', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
+              h('marker', {
+                key: 'b', id: 'qtp-arrow-head-accent', viewBox: '0 0 10 10', refX: 7, refY: 5,
+                markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
+              }, h('path', { d: 'M1.5 1.5 L7 5 L1.5 8.5', fill: 'none', stroke: 'rgba(127,178,255,.95)', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
+            ]),
+          ].concat(annotations.items.map(function (item) {
+            return h('path', { key: item.spec.key, d: item.path, className: 'qtp-arrow', 'data-accent': item.spec.accent ? 'true' : 'false' })
+          }))))
+          annotations.items.forEach(function (item) {
+            children.push(h('div', {
+              key: 'c-' + item.spec.key,
+              className: 'qtp-callout',
+              style: { left: item.capsule.left + 'px', top: item.capsule.top + 'px', width: item.capsule.width + 'px' },
+            }, [
+              h('span', { key: 'l', className: 'qtp-calloutLabel' }, item.spec.label),
+              item.spec.keys ? h('span', { key: 'k', className: 'qtp-calloutKey' }, item.spec.keys[0]) : null,
+              item.spec.hint ? h('span', { key: 'h', className: 'qtp-calloutHint' }, item.spec.hint) : null,
+            ]))
+          })
+        }
+        return h('div', { key: 'help', className: 'qtp-helpLayer' }, children)
+      }
 
       var body
       if (local) {
@@ -1122,14 +1253,12 @@ window.__ModuleLoader__.load({
         })
       }
 
-      return h('div', { className: 'qtp-pane' }, [
-        helpOpen ? h('div', { key: 'help', className: 'qtp-helpLayer' }, [
-          h('div', { key: 't', className: 'qtp-helpLayerTitle' }, '\u4f7f\u7528\u8bf4\u660e'),
-          h('div', { key: 'n', className: 'qtp-helpLayerNote' }, '\u5185\u5bb9\u5f85\u5b9a'),
-        ]) : null,
+      return h('div', { ref: paneRef, className: 'qtp-pane' }, [
+        helpOpen ? renderHelpLayer() : null,
         h('button', {
           key: 'helpBtn',
           className: 'qtp-helpBtn',
+          'data-qtp': 'help',
           'data-open': helpOpen ? 'true' : 'false',
           title: helpOpen ? '\u5173\u95ed\u4f7f\u7528\u8bf4\u660e' : '\u4f7f\u7528\u8bf4\u660e',
           onClick: function (event) {
