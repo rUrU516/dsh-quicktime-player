@@ -51,6 +51,7 @@ window.__ModuleLoader__.load({
       { key: 'pip', side: 'right', label: '\u753b\u4e2d\u753b' },
       { key: 'fs', side: 'right', label: '\u5168\u5c4f', hint: '\u53cc\u51fb\u753b\u9762' },
       { key: 'help', side: 'top', label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
+      { key: 'copy', side: 'top', label: '\u590d\u5236\u5f53\u524d\u5e27', hint: 'PNG' },
     ]
 
     /**
@@ -102,11 +103,11 @@ window.__ModuleLoader__.load({
       '.qtp-progress[data-hover=true] .qtp-thumb{opacity:1}',
       '.qtp-tip{position:absolute;bottom:18px;transform:translateX(-50%);background:rgba(16,18,22,.94);border:.5px solid rgba(255,255,255,.12);border-radius:6px;padding:2px 6px;font-size:11px;color:#dfe3ea;pointer-events:none;font-variant-numeric:tabular-nums}',
       '.qtp-row{display:flex;align-items:center;gap:6px;min-width:0}',
-      '.qtp-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;border:0;background:transparent;color:#e8eaed;cursor:pointer;padding:0}',
+      '.qtp-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:#e8eaed;cursor:pointer;padding:0}',
       '.qtp-btn:hover{background:rgba(255,255,255,.10)}',
       '.qtp-btn[data-on=true]{color:#7fb2ff}',
-      '.qtp-btn svg{width:16px;height:16px;display:block}',
-      '.qtp-time{font-variant-numeric:tabular-nums;color:#c3c9d4;font-size:11px;white-space:nowrap;flex:none;background:transparent;border:0;padding:2px 6px;border-radius:6px;cursor:pointer}',
+      '.qtp-btn svg{width:18px;height:18px;display:block}',
+      '.qtp-time{font-variant-numeric:tabular-nums;color:#c3c9d4;font-size:12px;white-space:nowrap;flex:none;background:transparent;border:0;height:32px;padding:0 9px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center}',
       '.qtp-time:hover{background:rgba(255,255,255,.10);color:#e8eaed}',
       '.qtp-spacer{flex:1 1 auto}',
       '.qtp-rate{font-size:11px;font-variant-numeric:tabular-nums;min-width:34px}',
@@ -118,13 +119,21 @@ window.__ModuleLoader__.load({
       '.qtp-hit{position:absolute;inset:0}',
       '.qtp-pane{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;min-width:0;background:#08090a}',
       '.qtp-pane .qtp-root{flex:1 1 auto;min-height:0}',
-      '.qtp-header{flex:none;display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 12px;background:#0d0f12;border-bottom:.5px solid rgba(255,255,255,.07);min-width:0}',
+      '.qtp-header{flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 8px 0 12px;background:#0d0f12;border-bottom:.5px solid rgba(255,255,255,.07);min-width:0}',
       '.qtp-headerPath{flex:1 1 auto;min-width:0;font-size:11px;color:#9aa2af;white-space:nowrap;overflow:hidden;text-align:left;user-select:text;-webkit-user-select:text;cursor:text}',
-      '.qtp-headerBtn{flex:none;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#c7ccd6;cursor:pointer;font-size:13px;line-height:1}',
+      '.qtp-headerBtn{flex:none;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#c7ccd6;cursor:pointer;font-size:13px;line-height:1}',
       '.qtp-headerBtn:hover{background:rgba(255,255,255,.09)}',
-      '.qtp-helpBtn{position:absolute;right:10px;top:40px;width:26px;height:26px;border-radius:50%;border:.5px solid rgba(255,255,255,.16);background:rgba(16,18,22,.55);color:#c9cfd8;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.6;transition:opacity .16s ease,background .16s ease,color .16s ease;z-index:10;padding:0}',
+            '.qtp-helpBtn{position:absolute;right:12px;top:42px;width:30px;height:30px;border-radius:50%;border:.5px solid rgba(255,255,255,.18);background:rgba(16,18,22,.55);color:#cfd6df;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.75;transition:opacity .16s ease,background .16s ease,color .16s ease,box-shadow .2s ease;z-index:10;padding:0}',
       '.qtp-helpBtn:hover{opacity:1;background:rgba(38,42,50,.92);color:#e8eaed}',
       '.qtp-helpBtn[data-open=true]{opacity:1;background:rgba(38,42,50,.92);color:#e8eaed}',
+      // the copy button sits to its left and never carries the guide halo
+      '.qtp-helpBtn.qtp-copyBtn{right:50px}',
+      '.qtp-copyBtn svg{display:block}',
+      // idle cyan halo: only on the guide button, present without hover
+      '.qtp-helpBtn:not(.qtp-copyBtn){border-color:rgba(34,211,238,.5);box-shadow:0 0 0 1px rgba(34,211,238,.22),0 0 11px rgba(34,211,238,.42)}',
+      '.qtp-helpBtn:not(.qtp-copyBtn):hover{box-shadow:0 0 0 1px rgba(34,211,238,.6),0 0 20px rgba(34,211,238,.75)}',
+      '.qtp-toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:11;padding:9px 15px;border-radius:10px;background:rgba(12,14,18,.92);border:.5px solid rgba(255,255,255,.16);box-shadow:0 12px 34px rgba(0,0,0,.55);color:#eef1f5;font-size:12.5px;white-space:nowrap;pointer-events:none;animation:qtp-toast-in .16s ease-out}',
+      '@keyframes qtp-toast-in{from{opacity:0;transform:translate(-50%,-46%) scale(.96)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}',
       '.qtp-helpLayer{position:absolute;inset:0;z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;background:rgba(7,8,10,.28);animation:qtp-help-in .14s ease-out;text-align:center}',
       '@keyframes qtp-help-in{from{opacity:0}to{opacity:1}}',
       '.qtp-helpArrows{position:absolute;inset:0;overflow:visible;pointer-events:none}',
@@ -817,6 +826,7 @@ window.__ModuleLoader__.load({
                 className: 'qtp-video',
                 'data-fit': zoomed ? 'false' : 'true',
                 src: source.url,
+                crossOrigin: 'anonymous',
                 preload: 'metadata',
                 playsInline: true,
                 controls: false,
@@ -980,6 +990,15 @@ window.__ModuleLoader__.load({
      * (generated by scripts/make-icon.mjs); this flat fallback only paints when
      * that request fails.
      */
+    /** Frame-copy glyph: a small screen with a lens. */
+    function CopyGlyph() {
+      return h('svg', { viewBox: '0 0 16 16', width: 16, height: 16, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
+        h('rect', { key: 'b', x: 1.8, y: 3.4, width: 10.4, height: 8.2, rx: 2, stroke: 'currentColor', strokeWidth: 1.4 }),
+        h('circle', { key: 'l', cx: 7, cy: 7.5, r: 2.1, stroke: 'currentColor', strokeWidth: 1.4 }),
+        h('path', { key: 't', d: 'M12.2 5.6h1.2a.8.8 0 0 1 .8.8v4.4a.8.8 0 0 1-.8.8h-1.2', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' }),
+      ])
+    }
+
     function QuickTimeGlyph(props) {
       var size = (props && props.size) || 16
       var [failed, setFailed] = useState(false)
@@ -1104,6 +1123,7 @@ window.__ModuleLoader__.load({
       var [nonce, setNonce] = useState(0)
       var [local, setLocal] = useState(null)
       var [helpOpen, setHelpOpen] = useState(false)
+      var [copyNote, setCopyNote] = useState('')
       var [annotations, setAnnotations] = useState(null)
       var paneRef = useRef(null)
       var [resolved, setResolved] = useState('')
@@ -1114,6 +1134,48 @@ window.__ModuleLoader__.load({
 
       var hasFile = path !== undefined && path !== ''
       var headerPath = hasFile ? (resolved || path) : (local ? local.name : '')
+
+      // Copy the current frame as a PNG: clipboard first, download as a fallback.
+      var copyFrame = function () {
+        var video = paneRef.current ? paneRef.current.querySelector('video') : null
+        if (!video || !video.videoWidth) {
+          setCopyNote('\u8fd8\u6ca1\u6709\u753b\u9762')
+          setTimeout(function () { setCopyNote('') }, 1800)
+          return
+        }
+        var canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        canvas.getContext('2d').drawImage(video, 0, 0)
+        var stamp = Math.round(video.currentTime * 1000)
+        canvas.toBlob(function (blob) {
+          if (!blob) {
+            setCopyNote('\u622a\u56fe\u5931\u8d25')
+            setTimeout(function () { setCopyNote('') }, 1800)
+            return
+          }
+          var done = function (text) {
+            setCopyNote(text)
+            setTimeout(function () { setCopyNote('') }, 1800)
+          }
+          if (navigator.clipboard && typeof window.ClipboardItem === 'function') {
+            navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]).then(function () {
+              done('\u5df2\u590d\u5236\u5f53\u524d\u5e27\u5230\u526a\u5207\u677f')
+            }).catch(function () { download(blob) })
+          } else {
+            download(blob)
+          }
+          function download(payload) {
+            var url = URL.createObjectURL(payload)
+            var link = document.createElement('a')
+            link.href = url
+            link.download = (basenameOf(path) || 'frame') + '-' + stamp + 'ms.png'
+            link.click()
+            setTimeout(function () { URL.revokeObjectURL(url) }, 4000)
+            done('\u526a\u8d34\u677f\u4e0d\u53ef\u7528\uff0c\u5df2\u4e0b\u8f7d PNG')
+          }
+        }, 'image/png')
+      }
 
       // Lay the annotations out against the real controls, and redo it whenever
       // the pane resizes (sidebar drag, window resize, fullscreen).
@@ -1130,6 +1192,8 @@ window.__ModuleLoader__.load({
           var capHeight = 28
           var gap = 8
           var barSpace = 86
+          var clamp = function (value, min, max) { return Math.min(Math.max(value, min), max) }
+
           var items = []
           HELP_CALLOUTS.forEach(function (spec) {
             var el = pane.querySelector('[data-qtp="' + spec.key + '"]')
@@ -1141,18 +1205,39 @@ window.__ModuleLoader__.load({
               anchorY: box.top - rect.top,
             })
           })
+
           var leftItems = items.filter(function (item) { return item.spec.side === 'left' })
           var rightItems = items.filter(function (item) { return item.spec.side === 'right' })
           var topItems = items.filter(function (item) { return item.spec.side === 'top' })
-          var clamp = function (value, min, max) { return Math.min(Math.max(value, min), max) }
-          // Cards sit centred over the control they describe, stacked upwards so
-          // they never collide; each arrow is a straight vertical drop.
-          var stack = function (list, rowOffset) {
+
+          // Top cluster: pinned under the corner buttons, stacked downwards.
+          var topStart = 42 + 30 + 12
+          topItems.forEach(function (item, index) {
+            item.capsule = {
+              left: Math.max(12, rect.width - 12 - capWidth),
+              top: topStart + index * (capHeight + gap),
+              width: capWidth,
+              height: capHeight,
+            }
+            var lineX = clamp(item.anchorX, item.capsule.left + 12, item.capsule.left + capWidth - 12)
+            item.path = 'M ' + lineX + ' ' + item.capsule.top + ' L ' + lineX + ' ' + (item.anchorY - 12)
+          })
+
+          // Bottom clusters share the space left under the top one: one row pitch
+          // for every row, shrinking the gap when the pane is short.
+          var bandTop = topStart + topItems.length * (capHeight + gap) + gap
+          var bandBottom = rect.height - barSpace
+          var rows = leftItems.length + rightItems.length
+          var pitch = capHeight + gap
+          if (rows > 1 && bandBottom - bandTop < rows * pitch) {
+            pitch = Math.max(capHeight + 2, (bandBottom - bandTop) / rows)
+          }
+          var stack = function (list, firstRow) {
             list.forEach(function (item, index) {
               var left = clamp(item.anchorX - capWidth / 2, 12, Math.max(12, rect.width - 12 - capWidth))
               item.capsule = {
                 left: left,
-                top: rect.height - barSpace - capHeight - (index + rowOffset) * (capHeight + gap),
+                top: bandBottom - capHeight - (index + firstRow) * pitch,
                 width: capWidth,
                 height: capHeight,
               }
@@ -1161,21 +1246,9 @@ window.__ModuleLoader__.load({
                 ' L ' + lineX + ' ' + (item.anchorY - 6)
             })
           }
-          // The right cluster starts above the left one, so no two cards share a row.
           stack(leftItems, 0)
           stack(rightItems, leftItems.length)
-          topItems.forEach(function (item) {
-            item.capsule = {
-              left: Math.max(12, rect.width - 12 - capWidth - 34),
-              top: 40,
-              width: capWidth,
-              height: capHeight,
-            }
-            // short connector from the card's right edge to the button beside it
-            var fromX = item.capsule.left + capWidth - 4
-            var fromY = item.capsule.top + capHeight / 2
-            item.path = 'M ' + fromX + ' ' + fromY + ' L ' + (item.anchorX - 14) + ' ' + (item.anchorY + 12)
-          })
+
           setAnnotations({ width: rect.width, height: rect.height, items: items })
         }
         compute()
@@ -1255,6 +1328,17 @@ window.__ModuleLoader__.load({
 
       return h('div', { ref: paneRef, className: 'qtp-pane' }, [
         helpOpen ? renderHelpLayer() : null,
+        h('button', {
+          key: 'copyBtn',
+          className: 'qtp-helpBtn qtp-copyBtn',
+          'data-qtp': 'copy',
+          title: '\u590d\u5236\u5f53\u524d\u5e27',
+          onClick: function (event) {
+            event.stopPropagation()
+            copyFrame()
+          },
+        }, h(CopyGlyph)),
+        copyNote ? h('div', { key: 'toast', className: 'qtp-toast' }, copyNote) : null,
         h('button', {
           key: 'helpBtn',
           className: 'qtp-helpBtn',

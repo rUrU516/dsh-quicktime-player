@@ -44,6 +44,26 @@
   }
 
   // ── diagnostics channel for the CDP driver ────────────────────────────────
+  // stand in for the clipboard so a copy can be asserted headlessly
+  window.__copied = []
+  {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        write: function (items) {
+          return Promise.all(items.map(function (item) {
+            var blob = item.getType ? item.getType('image/png') : null
+            if (blob) window.__copied.push({ type: blob.type, size: blob.size })
+            return blob
+          }))
+        },
+      },
+      configurable: true,
+    })
+  }
+  window.ClipboardItem = function (parts) {
+    this.getType = function (type) { return parts[type] }
+  }
+
   window.__errors = []
   window.addEventListener('error', function (event) {
     window.__errors.push(String((event.error && event.error.stack) || event.message))

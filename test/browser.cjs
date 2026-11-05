@@ -185,6 +185,11 @@ async function runMode(cdp, base, mode, options = {}) {
       duration: video ? video.duration : null,
       seekable: video && video.seekable.length ? [video.seekable.start(0), video.seekable.end(video.seekable.length - 1)] : [],
       buttons: document.querySelectorAll('.qtp-btn').length,
+      transportHeights: (() => {
+        const play = document.querySelector('[data-qtp="play"]')
+        const clock = document.querySelector('[data-qtp="clock"]')
+        return play && clock ? { play: Math.round(play.getBoundingClientRect().height), clock: Math.round(clock.getBoundingClientRect().height) } : null
+      })(),
       headerPath: (() => { const el = document.querySelector('.qtp-headerPath'); return el ? el.textContent : null })(),
       transform: (() => { const el = document.querySelector('.qtp-canvas'); return el ? getComputedStyle(el).transform : null })(),
       rootHeight: root ? Math.round(root.getBoundingClientRect().height) : 0,
@@ -261,7 +266,7 @@ async function runMode(cdp, base, mode, options = {}) {
 
     // focus the ? button: Space must still play/pause instead of activating it
     const helpButtonFocus = await evaluate(`(() => {
-      const button = document.querySelector('.qtp-helpBtn')
+      const button = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')
       if (!button) return null
       button.focus()
       return document.activeElement === button
@@ -276,16 +281,42 @@ async function runMode(cdp, base, mode, options = {}) {
       }
     })()`)
 
+    // the frame-copy button sits left of the "?" and yields a PNG
+    const copyButton = await evaluate(`(() => {
+      const copy = document.querySelector('.qtp-copyBtn')
+      const help = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')
+      if (!copy || !help) return null
+      const c = copy.getBoundingClientRect()
+      const h = help.getBoundingClientRect()
+      return { leftOfHelp: c.right <= h.left + 1, sameRow: Math.abs(c.top - h.top) < 2, rects: { copy: [c.left, c.right], help: [h.left, h.right] } }
+    })()`)
+    await evaluate(`(() => { const b = document.querySelector('.qtp-copyBtn'); if (b) b.click(); return true })()`)
+    await sleep(300)
+    const toastState = await evaluate(`(() => {
+      const toast = document.querySelector('.qtp-toast')
+      if (!toast) return null
+      const t = toast.getBoundingClientRect()
+      const pane = document.querySelector('.qtp-pane').getBoundingClientRect()
+      return {
+        text: toast.textContent,
+        centred: Math.abs((t.left + t.width / 2) - (pane.left + pane.width / 2)) < 6
+          && Math.abs((t.top + t.height / 2) - (pane.top + pane.height / 2)) < 6,
+      }
+    })()`)
+    await sleep(300)
+    const copied = await evaluate(`(() => (window.__copied || []).slice(-1)[0] || null)()`)
+    const halo = await evaluate(`(() => getComputedStyle(document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')).boxShadow)()`)
+
     // the "?" button opens a layer that covers the whole stage; a second click closes it
     const helpClosedBefore = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
-    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn'); if (b) b.click(); return true })()`)
+    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)'); if (b) b.click(); return true })()`)
     await sleep(200)
     const helpOpen = await evaluate(`(() => {
       const layer = document.querySelector('.qtp-helpLayer')
       if (!layer) return null
       const l = layer.getBoundingClientRect()
       const pane = document.querySelector('.qtp-pane').getBoundingClientRect()
-      const button = document.querySelector('.qtp-helpBtn')
+      const button = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')
       const buttonBox = button ? button.getBoundingClientRect() : null
       return {
         covers: Math.abs(l.top - pane.top) < 2 && Math.abs(l.height - pane.height) < 2,
@@ -293,7 +324,7 @@ async function runMode(cdp, base, mode, options = {}) {
         buttonOnTop: button ? Number(getComputedStyle(button).zIndex) > Number(getComputedStyle(layer).zIndex) : false,
         buttonInLayer: buttonBox ? buttonBox.top >= l.top && buttonBox.top <= l.bottom : false,
         text: layer.textContent,
-        glyph: (document.querySelector('.qtp-helpBtn') || {}).textContent || '',
+        glyph: (document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)') || {}).textContent || '',
       }
     })()`)
     // a real click in the middle of the layer must reach the video underneath
@@ -306,11 +337,17 @@ async function runMode(cdp, base, mode, options = {}) {
     }
     const pausedAfterThrough = await evaluate(`(() => { const v = document.querySelector('video'); return v ? v.paused : null })()`)
 
-    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn'); if (b) b.click(); return true })()`)
+    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)'); if (b) b.click(); return true })()`)
     await sleep(200)
     const helpClosedAfter = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
 
     interactions = {
+      copyRects: copyButton.value ? copyButton.value.rects : null,
+      copyLeftOfHelp: copyButton.value ? copyButton.value.leftOfHelp : null,
+      copySameRow: copyButton.value ? copyButton.value.sameRow : null,
+      copiedFrame: copied.value,
+      copyToast: toastState.value,
+      helpHalo: halo.value,
       helpButtonFocus: helpButtonFocus.value,
       spaceOnButtonPaused: afterSpaceOnButton.value ? afterSpaceOnButton.value.paused : null,
       spaceOnButtonOpenedLayer: afterSpaceOnButton.value ? afterSpaceOnButton.value.layerOpened : null,
