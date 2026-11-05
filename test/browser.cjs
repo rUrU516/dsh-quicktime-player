@@ -259,6 +259,23 @@ async function runMode(cdp, base, mode, options = {}) {
     await press('ArrowRight', 'ArrowRight', 39)
     const afterStep = await evaluate(`(() => { const v = document.querySelector('video'); return v ? { time: v.currentTime, paused: v.paused } : null })()`)
 
+    // focus the ? button: Space must still play/pause instead of activating it
+    const helpButtonFocus = await evaluate(`(() => {
+      const button = document.querySelector('.qtp-helpBtn')
+      if (!button) return null
+      button.focus()
+      return document.activeElement === button
+    })()`)
+    const pausedBeforeSpace = await evaluate(`(() => { const v = document.querySelector('video'); return v ? v.paused : null })()`)
+    await press(' ', 'Space', 32)
+    const afterSpaceOnButton = await evaluate(`(() => {
+      const v = document.querySelector('video')
+      return {
+        paused: v ? v.paused : null,
+        layerOpened: document.querySelector('.qtp-helpLayer') !== null,
+      }
+    })()`)
+
     // the "?" button opens a layer that covers the whole stage; a second click closes it
     const helpClosedBefore = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
     await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn'); if (b) b.click(); return true })()`)
@@ -283,7 +300,10 @@ async function runMode(cdp, base, mode, options = {}) {
     const helpClosedAfter = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
 
     interactions = {
-      helpClosedBefore: helpClosedBefore.value,
+      helpButtonFocus: helpButtonFocus.value,
+      spaceOnButtonPaused: afterSpaceOnButton.value ? afterSpaceOnButton.value.paused : null,
+      spaceOnButtonOpenedLayer: afterSpaceOnButton.value ? afterSpaceOnButton.value.layerOpened : null,
+      pausedBeforeSpace: pausedBeforeSpace.value,
       helpCoversStage: helpOpen.value ? helpOpen.value.covers : null,
       helpButtonOnTop: helpOpen.value ? helpOpen.value.buttonOnTop : null,
       helpText: helpOpen.value ? helpOpen.value.text : null,

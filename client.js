@@ -645,7 +645,11 @@ window.__ModuleLoader__.load({
           if (target && target.tagName === 'INPUT' && (target.type === 'text' || target.type === 'file')) return
           var fullscreen = document.fullscreenElement === root || document.fullscreenElement === stageRef.current
           var active = document.activeElement
-          if (!fullscreen && (!active || !root.contains(active))) return
+          // Siblings of the player (the help button sits on the pane, not in the
+          // player) must not swallow Space either: accept anything inside the pane.
+          var pane = typeof root.closest === 'function' ? root.closest('.qtp-pane') : null
+          var scope = pane || root
+          if (!fullscreen && (!active || !scope.contains(active))) return
           var handled = true
           switch (event.key) {
             case ' ':
@@ -698,8 +702,11 @@ window.__ModuleLoader__.load({
             wake()
           }
         }
-        root.addEventListener('keydown', onKey, true)
-        return function () { root.removeEventListener('keydown', onKey, true) }
+        // The pane, not the player, is the keyboard surface: the help button is a
+        // sibling of the player, and keys pressed on it belong to playback too.
+        var surface = typeof root.closest === 'function' ? (root.closest('.qtp-pane') || root) : root
+        surface.addEventListener('keydown', onKey, true)
+        return function () { surface.removeEventListener('keydown', onKey, true) }
       }, [applyZoom, nudge, stepFrames, toggleFullscreen, toggleMute, togglePlay, wake])
 
       // 7. progress bar scrubbing
