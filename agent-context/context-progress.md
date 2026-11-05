@@ -74,6 +74,14 @@ Copy frame, clip export, the row-based guide, the larger controls and the manual
   server and session-cwd confinement are constants (`ROUTE_PREFIX`, `MAX_BYTES`). `apply(ctx)` ignores any row config.
 - `ffmpeg` is probed at `/opt/homebrew/bin`, `/usr/local/bin`, then `PATH` — nothing to point anywhere.
 
+## Resume state
+
+- `localStorage['qtp:resume:v1']` holds one record per **absolute path**: `{ t, duration, rate, loop, volume, muted,
+  playing, at }`. Limit 50 entries (LRU by `at`), records older than 30 days are ignored, quota failures evict 20 and
+  retry once. Written at most once a second while playing, plus on seek/rate/volume/loop changes and on unmount.
+- Restore only when the duration still matches within a second; `t` at the end of a non-looping file drops the record.
+  Zoom/pan and clip marks are deliberately not restored.
+
 ## Open
 
 - `-movflags +faststart` for clips and an exact-frame re-encode mode: offered, not decided.

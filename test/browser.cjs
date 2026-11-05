@@ -414,10 +414,40 @@ async function runMode(cdp, base, mode, options = {}) {
     await sleep(200)
     const helpClosedAfter = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
 
+    // resume: a seek is remembered, and a reload lands back on it
+    await evaluate(`(async () => {
+      const video = document.querySelector('video')
+      video.pause()
+      video.currentTime = 8
+      video.playbackRate = 1.6
+      await new Promise((r) => setTimeout(r, 500))
+      return true
+    })()`, true)
+    const storedResume = await evaluate(`(() => {
+      const raw = window.localStorage.getItem('qtp:resume:v1')
+      if (!raw) return null
+      const map = JSON.parse(raw)
+      const key = Object.keys(map)[0]
+      return { key, record: map[key] }
+    })()`)
+    await cdp.send('Page.reload', {}, sessionId)
+    await sleep(1500)
+    for (let i = 0; i < 40; i += 1) {
+      const probe = await evaluate(`(() => { const v = document.querySelector('video'); return v && v.readyState >= 1 ? v.currentTime : null })()`)
+      if (probe.value !== null) break
+      await sleep(250)
+    }
+    const restored = await evaluate(`(() => {
+      const v = document.querySelector('video')
+      return v ? { time: Math.round(v.currentTime * 10) / 10, rate: v.playbackRate } : null
+    })()`)
+
     interactions = {
       copyRects: copyButton.value ? copyButton.value.rects : null,
       clipMarks: marks.value,
       updateCheck: updateCheck.value,
+      storedResume: storedResume.value,
+      restored: restored.value,
       clipHover: clipHover.value,
       copyLeftOfHelp: copyButton.value ? copyButton.value.leftOfHelp : null,
       copySameRow: copyButton.value ? copyButton.value.sameRow : null,
@@ -536,6 +566,18 @@ async function runMode(cdp, base, mode, options = {}) {
     if (i.helpClickThrough !== true) bad.push('help: the layer is not click-through')
     if (i.clickThroughWorked !== true) bad.push('help: a click on the layer did not reach the player')
     if (i.helpClosedAfter !== true) bad.push('help: the ? button did not close the layer')
+    const rs = i.storedResume
+    if (!rs || !rs.record) bad.push('resume: nothing was written for the opened file')
+    else {
+      if (Math.abs(rs.record.t - 8) > 0.6) bad.push(`resume: stored position is off (${rs.record.t})`)
+      if (!rs.key.endsWith('/test/sample.mp4')) bad.push(`resume: keyed by the wrong path (${rs.key})`)
+    }
+    const rv = i.restored
+    if (!rv) bad.push('resume: the player did not come back after a reload')
+    else {
+      if (Math.abs(rv.time - 8) > 0.7) bad.push(`resume: reload did not land on the saved position (${rv.time})`)
+      if (Math.abs(rv.rate - 1.6) > 0.05) bad.push(`resume: playback rate was not restored (${rv.rate})`)
+    }
     const uc = i.updateCheck
     if (!uc) bad.push('update: the check button is missing')
     else {

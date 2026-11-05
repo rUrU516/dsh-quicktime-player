@@ -19,6 +19,9 @@ capture and clip export.
 - **Own controls.** Play/pause, time ⇄ frame number, speed slider (0.2× – 5×, 0.2 steps), loop, vertical volume
   popup, mute, picture-in-picture, fullscreen. The chrome fades out while the mouse is idle.
 - **Frame stepping.** <kbd>←</kbd> / <kbd>→</kbd> step one frame; the frame rate is measured from delivered frames.
+- **Picks up where you left off.** Each file's position, speed, loop, volume and mute are remembered by absolute path
+  (the last 50 files, ignored after 30 days), so switching sessions and coming back resumes on the same frame. If the
+  file was re-rendered (duration changed), the old record is dropped rather than seeking somewhere unrelated.
 - **Copy the current frame.** The camera button next to `?` writes the frame under the playhead to the clipboard as
   a PNG (falling back to a download), with a toast confirming it.
 - **Trim a range.** The scissors button drops a marker at the playhead; two markers survive, linked by a dashed line,

@@ -402,6 +402,8 @@ window.__ModuleLoader__.load({
       var [volume, setVolume] = useState(1)
       var [volumeOpen, setVolumeOpen] = useState(false)
       var [rate, setRate] = useState(1)
+      var restoredRef = useRef(false)
+      var savedAtRef = useRef(0)
       var [loop, setLoop] = useState(false)
       var [chrome, setChrome] = useState(true)
       var [mediaError, setMediaError] = useState('')
@@ -459,6 +461,27 @@ window.__ModuleLoader__.load({
         return function () { aborted = true }
       }, [sessionId, path, props.blobUrl])
 
+      // Where this file was left, keyed by its absolute path (blob files have none).
+      var resumeKey = source && typeof source.absolutePath === 'string' ? source.absolutePath : ''
+      var remember = function (video) {
+        if (!video || !resumeKey || !video.duration || video.duration < 1) return
+        if (!video.loop && video.currentTime > video.duration - 1) {
+          resumeDrop(resumeKey)
+          return
+        }
+        resumeSave(resumeKey, {
+          t: Math.round(video.currentTime * 10) / 10,
+          duration: Math.round(video.duration * 10) / 10,
+          rate: video.playbackRate,
+          loop: video.loop,
+          volume: video.volume,
+          muted: video.muted,
+          playing: !video.paused,
+          at: Date.now(),
+        })
+        savedAtRef.current = Date.now()
+      }
+
       // 2. media events
       useEffect(function () {
         var video = videoRef.current
@@ -471,9 +494,51 @@ window.__ModuleLoader__.load({
         var onMeta = function () {
           setDuration(video.duration || 0)
           setWaiting(false)
+          if (!restoredRef.current) {
+            restoredRef.current = true
+            var record = resumeLoad(resumeKey)
+            if (record !== null) {
+              var sameFile = typeof record.duration !== 'number' || Math.abs(record.duration - video.duration) < 1
+              var inside = typeof record.t === 'number' && record.t > 0 && record.t < video.duration - 0.5
+              if (sameFile && inside) {
+                video.currentTime = record.t
+                if (typeof record.rate === 'number' && record.rate >= 0.2 && record.rate <= 5) {
+                  video.playbackRate = record.rate
+                  setRate(record.rate)
+                }
+                if (record.loop === true) {
+                  video.loop = true
+                  setLoop(true)
+                }
+                if (typeof record.volume === 'number') {
+                  video.volume = record.volume
+                  setVolume(record.volume)
+                }
+                if (record.muted === true) {
+                  video.muted = true
+                  setMuted(true)
+                }
+                if (record.playing === true) {
+                  var attempt = video.play()
+                  if (attempt && typeof attempt.catch === 'function') {
+                    attempt.catch(function () { setPlaying(false) })
+                  }
+                }
+              } else {
+                resumeDrop(resumeKey)
+              }
+            }
+          }
           postDiag({ kind: 'meta', duration: video.duration, w: video.videoWidth, h: video.videoHeight, seekable: video.seekable.length > 0 ? [video.seekable.start(0), video.seekable.end(video.seekable.length - 1)] : [], transport: source.transport })
         }
-        var onTime = function () { setCurrent(video.currentTime) }
+        var onTime = function () {
+          setCurrent(video.currentTime)
+          if (Date.now() - savedAtRef.current > 1000) remember(video)
+        }
+        var onSeeked = function () { remember(video) }
+        var onEnded = function () {
+          if (!video.loop) resumeDrop(resumeKey)
+        }
         var onDuration = function () { setDuration(video.duration || 0) }
         var onProgress = function () {
           try {
@@ -503,6 +568,8 @@ window.__ModuleLoader__.load({
         video.addEventListener('loadedmetadata', onMeta)
         video.addEventListener('durationchange', onDuration)
         video.addEventListener('timeupdate', onTime)
+        video.addEventListener('seeked', onSeeked)
+        video.addEventListener('ended', onEnded)
         video.addEventListener('progress', onProgress)
         video.addEventListener('play', onPlay)
         video.addEventListener('pause', onPause)
@@ -514,6 +581,9 @@ window.__ModuleLoader__.load({
           video.removeEventListener('loadedmetadata', onMeta)
           video.removeEventListener('durationchange', onDuration)
           video.removeEventListener('timeupdate', onTime)
+          video.removeEventListener('seeked', onSeeked)
+          video.removeEventListener('ended', onEnded)
+          remember(video)
           video.removeEventListener('progress', onProgress)
           video.removeEventListener('play', onPlay)
           video.removeEventListener('pause', onPause)
@@ -529,18 +599,21 @@ window.__ModuleLoader__.load({
         if (!video) return
         video.volume = volume
         video.muted = muted
+        if (video.duration) remember(video)
       }, [volume, muted])
 
       useEffect(function () {
         var video = videoRef.current
         if (!video) return
         video.playbackRate = rate
+        if (video.duration) remember(video)
       }, [rate])
 
       useEffect(function () {
         var video = videoRef.current
         if (!video) return
         video.loop = loop
+        if (video.duration) remember(video)
       }, [loop])
 
       // 3. auto-hide chrome
@@ -1209,6 +1282,63 @@ window.__ModuleLoader__.load({
         h('circle', { key: 'b', cx: 3.4, cy: 4.4, r: 1.9, stroke: 'currentColor', strokeWidth: 1.3 }),
         h('path', { key: 'c', d: 'M5.1 5.5 L13.4 12.3 M5.1 10.5 L13.4 3.7', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' }),
       ])
+    }
+
+    // ── resume: where each file was left, by absolute path ──────────────────
+    var RESUME_KEY = 'qtp:resume:v1'
+    var RESUME_LIMIT = 50
+    var RESUME_MAX_AGE = 30 * 24 * 60 * 60 * 1000
+
+    function resumeMap() {
+      try {
+        var raw = window.localStorage.getItem(RESUME_KEY)
+        var parsed = raw ? JSON.parse(raw) : null
+        return parsed !== null && typeof parsed === 'object' ? parsed : {}
+      } catch {
+        return {}
+      }
+    }
+
+    function resumeWrite(map) {
+      try {
+        window.localStorage.setItem(RESUME_KEY, JSON.stringify(map))
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    function resumeSave(key, record) {
+      if (typeof key !== 'string' || key === '') return
+      var map = resumeMap()
+      map[key] = record
+      var keys = Object.keys(map)
+      if (keys.length > RESUME_LIMIT) {
+        keys.sort(function (a, b) { return (map[a].at || 0) - (map[b].at || 0) })
+        keys.slice(0, keys.length - RESUME_LIMIT).forEach(function (stale) { delete map[stale] })
+      }
+      if (!resumeWrite(map)) {
+        var survivors = Object.keys(map)
+        survivors.sort(function (a, b) { return (map[a].at || 0) - (map[b].at || 0) })
+        survivors.slice(0, 20).forEach(function (stale) { delete map[stale] })
+        resumeWrite(map)
+      }
+    }
+
+    function resumeLoad(key) {
+      if (typeof key !== 'string' || key === '') return null
+      var record = resumeMap()[key]
+      if (record === null || typeof record !== 'object') return null
+      if (typeof record.at !== 'number' || Date.now() - record.at > RESUME_MAX_AGE) return null
+      return record
+    }
+
+    function resumeDrop(key) {
+      if (typeof key !== 'string' || key === '') return
+      var map = resumeMap()
+      if (map[key] === undefined) return
+      delete map[key]
+      resumeWrite(map)
     }
 
     /** Frame-copy glyph: a small screen with a lens. */
