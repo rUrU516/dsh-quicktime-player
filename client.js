@@ -100,12 +100,19 @@ window.__ModuleLoader__.load({
       '.qtp-vslider{writing-mode:vertical-lr;direction:rtl;width:16px;height:92px;margin:0;accent-color:#5b9dff;cursor:pointer}',
       '.qtp-popValue{font-size:11px;color:#c3c9d4;font-variant-numeric:tabular-nums}',
       '.qtp-hit{position:absolute;inset:0}',
-      '.qtp-pane{display:flex;flex-direction:column;height:100%;min-height:0;min-width:0;background:#08090a}',
+      '.qtp-pane{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;min-width:0;background:#08090a}',
       '.qtp-pane .qtp-root{flex:1 1 auto;min-height:0}',
       '.qtp-header{flex:none;display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 12px;background:#0d0f12;border-bottom:.5px solid rgba(255,255,255,.07);min-width:0}',
       '.qtp-headerPath{flex:1 1 auto;min-width:0;font-size:11px;color:#9aa2af;white-space:nowrap;overflow:hidden;text-align:left;user-select:text;-webkit-user-select:text;cursor:text}',
       '.qtp-headerBtn{flex:none;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#c7ccd6;cursor:pointer;font-size:13px;line-height:1}',
       '.qtp-headerBtn:hover{background:rgba(255,255,255,.09)}',
+      '.qtp-helpBtn{position:absolute;right:10px;top:40px;width:26px;height:26px;border-radius:50%;border:.5px solid rgba(255,255,255,.16);background:rgba(16,18,22,.55);color:#c9cfd8;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.6;transition:opacity .16s ease,background .16s ease,color .16s ease;z-index:10;padding:0}',
+      '.qtp-helpBtn:hover{opacity:1;background:rgba(38,42,50,.92);color:#e8eaed}',
+      '.qtp-helpBtn[data-open=true]{opacity:1;background:rgba(38,42,50,.92);color:#e8eaed}',
+      '.qtp-helpLayer{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;background:rgba(7,8,10,.93);backdrop-filter:blur(1px);animation:qtp-help-in .14s ease-out;text-align:center}',
+      '@keyframes qtp-help-in{from{opacity:0}to{opacity:1}}',
+      '.qtp-helpLayerTitle{font-size:14px;color:#eef0f4}',
+      '.qtp-helpLayerNote{font-size:11px;color:#8f96a3;line-height:1.6;max-width:280px}',
       '.qtp-empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;min-height:0}',
       '.qtp-drop{width:min(420px,100%);display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 22px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;background:rgba(255,255,255,.02);transition:border-color .15s ease,background .15s ease}',
       '.qtp-drop[data-dragging=true]{border-color:#5b9dff;background:rgba(91,157,255,.08)}',
@@ -333,7 +340,7 @@ window.__ModuleLoader__.load({
       var fps = useVideoFps(videoRef, source !== null)
       var TIME_MODES = ['time', 'frame']
       var popupOpenRef = useRef(false)
-      popupOpenRef.current = volumeOpen || rateOpen
+      popupOpenRef.current = volumeOpen || rateOpen || props.pinned === true
 
       var onLoadedRef = useRef(props.onLoaded)
       onLoadedRef.current = props.onLoaded
@@ -586,7 +593,7 @@ window.__ModuleLoader__.load({
       /** Pointer events inside the transport bar / zoom HUD must not reach the stage gesture layer. */
       var fromChrome = function (event) {
         var target = event.target
-        return !!(target && typeof target.closest === 'function' && target.closest('.qtp-bar, .qtp-error'))
+        return !!(target && typeof target.closest === 'function' && target.closest('.qtp-bar, .qtp-error, .qtp-helpLayer, .qtp-helpBtn'))
       }
       var onPointerDown = useCallback(function (event) {
         if (event.button !== 0 || fromChrome(event)) return
@@ -746,7 +753,7 @@ window.__ModuleLoader__.load({
         ref: rootRef,
         className: 'qtp-root',
         tabIndex: -1,
-        'data-chrome': chrome ? 'true' : 'false',
+        'data-chrome': (chrome || props.pinned) ? 'true' : 'false',
         onPointerMove: wake,
         onPointerEnter: wake,
         onPointerUp: function () {
@@ -1068,6 +1075,7 @@ window.__ModuleLoader__.load({
       var path = file && file.path
       var [nonce, setNonce] = useState(0)
       var [local, setLocal] = useState(null)
+      var [helpOpen, setHelpOpen] = useState(false)
       var [resolved, setResolved] = useState('')
 
       useEffect(function () {
@@ -1107,6 +1115,20 @@ window.__ModuleLoader__.load({
       }
 
       return h('div', { className: 'qtp-pane' }, [
+        helpOpen ? h('div', { key: 'help', className: 'qtp-helpLayer' }, [
+          h('div', { key: 't', className: 'qtp-helpLayerTitle' }, '\u4f7f\u7528\u8bf4\u660e'),
+          h('div', { key: 'n', className: 'qtp-helpLayerNote' }, '\u5185\u5bb9\u5f85\u5b9a'),
+        ]) : null,
+        h('button', {
+          key: 'helpBtn',
+          className: 'qtp-helpBtn',
+          'data-open': helpOpen ? 'true' : 'false',
+          title: helpOpen ? '\u5173\u95ed\u4f7f\u7528\u8bf4\u660e' : '\u4f7f\u7528\u8bf4\u660e',
+          onClick: function (event) {
+            event.stopPropagation()
+            setHelpOpen(!helpOpen)
+          },
+        }, helpOpen ? '\u00d7' : '?'),
         h(PaneHeader, {
           key: 'h',
           path: headerPath,

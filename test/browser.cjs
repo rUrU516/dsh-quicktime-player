@@ -259,7 +259,36 @@ async function runMode(cdp, base, mode, options = {}) {
     await press('ArrowRight', 'ArrowRight', 39)
     const afterStep = await evaluate(`(() => { const v = document.querySelector('video'); return v ? { time: v.currentTime, paused: v.paused } : null })()`)
 
+    // the "?" button opens a layer that covers the whole stage; a second click closes it
+    const helpClosedBefore = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
+    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn'); if (b) b.click(); return true })()`)
+    await sleep(200)
+    const helpOpen = await evaluate(`(() => {
+      const layer = document.querySelector('.qtp-helpLayer')
+      if (!layer) return null
+      const l = layer.getBoundingClientRect()
+      const pane = document.querySelector('.qtp-pane').getBoundingClientRect()
+      const button = document.querySelector('.qtp-helpBtn')
+      const buttonBox = button ? button.getBoundingClientRect() : null
+      return {
+        covers: Math.abs(l.top - pane.top) < 2 && Math.abs(l.height - pane.height) < 2,
+        buttonOnTop: button ? Number(getComputedStyle(button).zIndex) > Number(getComputedStyle(layer).zIndex) : false,
+        buttonInLayer: buttonBox ? buttonBox.top >= l.top && buttonBox.top <= l.bottom : false,
+        text: layer.textContent,
+        glyph: (document.querySelector('.qtp-helpBtn') || {}).textContent || '',
+      }
+    })()`)
+    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn'); if (b) b.click(); return true })()`)
+    await sleep(200)
+    const helpClosedAfter = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
+
     interactions = {
+      helpClosedBefore: helpClosedBefore.value,
+      helpCoversStage: helpOpen.value ? helpOpen.value.covers : null,
+      helpButtonOnTop: helpOpen.value ? helpOpen.value.buttonOnTop : null,
+      helpText: helpOpen.value ? helpOpen.value.text : null,
+      helpGlyph: helpOpen.value ? helpOpen.value.glyph : null,
+      helpClosedAfter: helpClosedAfter.value,
       timeBefore: before.value.time,
       frameText: frameText.value,
       buttonCount: before.value.buttons,
