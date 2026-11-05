@@ -38,22 +38,36 @@ window.__ModuleLoader__.load({
     var IMPL_ID = 'dsh-quicktime-player/video'
 
     /**
-     * What the help layer annotates: one row per transport control. `side`
-     * decides which column the label stacks into; `accent` marks the primary action.
+     * The whole guide lives here: rows of `label / how to use it`, grouped by
+     * what the reader is trying to do. Adding a feature means adding a row.
      */
-    var HELP_CALLOUTS = [
-      { key: 'play', side: 'left', label: '\u64ad\u653e / \u6682\u505c', keys: ['Space'], hint: '\u70b9\u753b\u9762', accent: true },
-      { key: 'clock', side: 'left', label: '\u65f6\u95f4 / \u5e27\u53f7', keys: ['\u2190', '\u2192'], hint: '\u9010\u5e27' },
-      { key: 'progress', side: 'left', label: '\u62d6\u52a8\u8fdb\u5ea6', keys: ['Shift', '\u2190\u2192'], hint: '\u00b11 \u79d2' },
-      { key: 'clip', side: 'right', label: '\u6807\u8bb0\u7247\u6bb5', hint: '\u60ac\u505c\u4fdd\u5b58' },
-      { key: 'rate', side: 'right', label: '\u500d\u901f', keys: ['0.2\u00d7\u20135\u00d7'] },
-      { key: 'loop', side: 'right', label: '\u5faa\u73af' },
-      { key: 'mute', side: 'right', label: '\u97f3\u91cf' },
-      { key: 'pip', side: 'right', label: '\u753b\u4e2d\u753b' },
-      { key: 'fs', side: 'right', label: '\u5168\u5c4f', hint: '\u53cc\u51fb\u753b\u9762' },
-      { key: 'gesture', side: 'center', label: '\u6eda\u8f6e\u7f29\u653e \u00b7 \u62d6\u62fd\u5e73\u79fb' },
-      { key: 'copy', side: 'top', indent: 50, label: '\u590d\u5236\u5f53\u524d\u5e27', hint: 'PNG' },
-      { key: 'help', side: 'top', indent: 12, label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
+    var HELP_GROUPS = [
+      {
+        title: '\u64ad\u653e',
+        rows: [
+          { label: '\u64ad\u653e / \u6682\u505c', keys: ['Space'], text: '\u6216\u70b9\u753b\u9762' },
+          { label: '\u9010\u5e27', keys: ['\u2190', '\u2192'], text: '\u7cbe\u786e\u4e00\u5e27' },
+          { label: '\u5feb\u9000 / \u5feb\u8fdb 1 \u79d2', keys: ['Shift', '\u2190\u2192'] },
+          { label: '\u62d6\u52a8\u8fdb\u5ea6', text: '\u70b9\u6216\u62d6\u8fdb\u5ea6\u6761' },
+        ],
+      },
+      {
+        title: '\u89c6\u56fe',
+        rows: [
+          { label: '\u7f29\u653e', text: '\u6eda\u8f6e\uff081\u00d7\u20138\u00d7\uff09' },
+          { label: '\u5e73\u79fb', text: '\u653e\u5927\u540e\u62d6\u62fd' },
+          { label: '\u5168\u5c4f', icon: 'expand', keys: ['F'], text: '\u6216\u53cc\u51fb\u753b\u9762' },
+          { label: '\u500d\u901f', icon: 'rate', text: '\u5f39\u7ad6\u6761\uff080.2\u00d7\u20135\u00d7\uff09' },
+          { label: '\u97f3\u91cf', icon: 'volume', text: '\u60ac\u505c\u5f39\u51fa\u7ad6\u6761' },
+        ],
+      },
+      {
+        title: '\u5de5\u5177',
+        rows: [
+          { label: '\u526a\u8f91\u5207\u7247', icon: 'scissors', text: '\u70b9\u4e24\u4e0b\u6807\u8bb0\uff0c\u60ac\u505c\u53ef\u4fdd\u5b58' },
+          { label: '\u590d\u5236\u5f53\u524d\u5e27', icon: 'camera', text: 'PNG \u8fdb\u526a\u8d34\u677f' },
+        ],
+      },
     ]
 
     /**
@@ -146,14 +160,20 @@ window.__ModuleLoader__.load({
       '@keyframes qtp-toast-in{from{opacity:0;transform:translate(-50%,-46%) scale(.96)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}',
       '.qtp-helpLayer{position:absolute;inset:0;z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;background:rgba(7,8,10,.28);animation:qtp-help-in .14s ease-out;text-align:center}',
       '@keyframes qtp-help-in{from{opacity:0}to{opacity:1}}',
-      '.qtp-helpArrows{position:absolute;inset:0;overflow:visible;pointer-events:none}',
-      '.qtp-arrow{fill:none;stroke:rgba(214,226,255,.72);stroke-width:1.5;stroke-dasharray:6 6;stroke-linecap:round;marker-end:url(#qtp-arrow-head)}',
-      '.qtp-arrow[data-accent=true]{stroke:rgba(127,178,255,.95);marker-end:url(#qtp-arrow-head-accent)}',
-      '.qtp-callout{position:absolute;display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;box-sizing:border-box;border-radius:8px;background:rgba(12,14,18,.94);border:.5px solid rgba(255,255,255,.14);color:#eef1f5;font-size:12px;line-height:1;white-space:nowrap;overflow:hidden}',
-      '.qtp-callout[data-center=true]{transform:translateX(-50%);padding:0 12px;background:rgba(12,14,18,.78);border-color:rgba(255,255,255,.18)}',
-      '.qtp-calloutLabel{flex:none;color:#f2f5f9}',
-      '.qtp-calloutKey{flex:none;font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.10);border:.5px solid rgba(255,255,255,.16);border-radius:4px;padding:0 5px;color:#dfe3ea}',
-      '.qtp-calloutHint{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#98a0ac;font-size:11px}',
+      '.qtp-guide{position:absolute;left:12px;top:44px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 96px);overflow:auto;box-sizing:border-box;padding:11px 13px;border-radius:12px;background:rgba(12,14,18,.9);border:.5px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.55);color:#e8ebf0;font-size:12px;line-height:1.32;text-align:left}',
+      '.qtp-guideHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:.5px solid rgba(255,255,255,.10)}',
+      '.qtp-guideTitle{font-size:13px;font-weight:560;color:#f4f6f9}',
+      '.qtp-guideHint{font-size:11px;color:#8f96a2;white-space:nowrap}',
+      '.qtp-guideGroup{padding-top:6px}',
+      '.qtp-guideGroupTitle{font-size:10.5px;letter-spacing:.04em;color:#9aa2ae;padding-bottom:3px}',
+      '.qtp-guideRow{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start;padding:1.5px 0}',
+      '.qtp-guideLabel{color:#cfd5de;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.qtp-guideValue{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}',
+      '.qtp-guideIcon{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:5px;background:rgba(255,255,255,.06);border:.5px solid rgba(255,255,255,.14);color:#dfe3ea}',
+      '.qtp-guideIcon svg{width:12px;height:12px;display:block}',
+      '.qtp-guideRate{font:10.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#dfe3ea}',
+      '.qtp-guideKey{flex:none;font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.10);border:.5px solid rgba(255,255,255,.18);border-radius:4px;padding:0 5px;color:#dfe3ea}',
+      '.qtp-guideText{color:#a8b0bc;font-size:12px}',
       '.qtp-helpLayer>*{pointer-events:none}',
       '.qtp-helpLayerNote{font-size:11px;color:#c6ccd6;line-height:1.6;max-width:280px;text-shadow:0 1px 8px rgba(0,0,0,.85)}',
       '.qtp-empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;min-height:0}',
@@ -1283,7 +1303,6 @@ window.__ModuleLoader__.load({
       var [helpOpen, setHelpOpen] = useState(false)
       var [canExport, setCanExport] = useState(false)
       var [toast, setToast] = useState('')
-      var [annotations, setAnnotations] = useState(null)
       var paneRef = useRef(null)
       var [resolved, setResolved] = useState('')
 
@@ -1350,157 +1369,39 @@ window.__ModuleLoader__.load({
         return function () { aborted = true }
       }, [])
 
-      // Lay the annotations out against the real controls, and redo it whenever
-      // the pane resizes (sidebar drag, window resize, fullscreen).
-      useEffect(function () {
-        if (!helpOpen) {
-          setAnnotations(null)
-          return
-        }
-        var pane = paneRef.current
-        if (!pane) return
-        var compute = function () {
-          var rect = pane.getBoundingClientRect()
-          var capWidth = Math.max(104, Math.min(196, Math.round(rect.width * 0.5)))
-          var capHeight = 28
-          var gap = 8
-          var barSpace = 86
-          var clamp = function (value, min, max) { return Math.min(Math.max(value, min), max) }
-
-          var items = []
-          HELP_CALLOUTS.forEach(function (spec) {
-            if (spec.side === 'center') {
-              items.push({ spec: spec, anchorX: rect.width / 2, anchorY: null })
-              return
+      // The guide is plain content: a card in the top-left corner. No measuring,
+      // no arrows, nothing to re-compute when the pane resizes.
+      var renderGuide = function () {
+        var content = [
+          h('div', { key: 'head', className: 'qtp-guideHead' }, [
+            h('span', { key: 't', className: 'qtp-guideTitle' }, '\u4f7f\u7528\u8bf4\u660e'),
+            h('span', { key: 'h', className: 'qtp-guideHint' }, '\u518d\u70b9\u4e00\u6b21 ? \u6536\u8d77'),
+          ]),
+        ]
+        HELP_GROUPS.forEach(function (group) {
+          var rows = group.rows.map(function (row) {
+            var value = []
+            if (row.icon) {
+              var glyph = { scissors: IconScissors, camera: CopyGlyph, volume: IconVolume, expand: IconExpand, rate: null }[row.icon]
+              value.push(h('span', { key: 'i', className: 'qtp-guideIcon' }, row.icon === 'rate' ? h('span', { key: 'r', className: 'qtp-guideRate' }, '1\u00d7') : h(glyph, { key: 'g' })))
             }
-            var el = pane.querySelector('[data-qtp="' + spec.key + '"]')
-            if (!el) return
-            var box = el.getBoundingClientRect()
-            items.push({
-              spec: spec,
-              anchorX: box.left - rect.left + box.width / 2,
-              anchorY: box.top - rect.top,
-            })
-          })
-
-          var centreItems = items.filter(function (item) { return item.spec.side === 'center' })
-          var leftItems = items.filter(function (item) { return item.spec.side === 'left' })
-          var rightItems = items.filter(function (item) { return item.spec.side === 'right' })
-          var topItems = items.filter(function (item) { return item.spec.side === 'top' })
-
-          // Top cluster: pinned under the corner buttons, stacked downwards.
-          var topStart = 42 + 30 + 12
-          topItems.forEach(function (item, index) {
-            var inset = typeof item.spec.indent === 'number' ? item.spec.indent : 12
-            item.capsule = {
-              left: Math.max(12, rect.width - inset - capWidth),
-              top: topStart + index * (capHeight + gap),
-              width: capWidth,
-              height: capHeight,
+            if (row.keys) {
+              row.keys.forEach(function (key, index) {
+                value.push(h('span', { key: 'k' + index, className: 'qtp-guideKey' }, key))
+              })
             }
-            var lineX = clamp(item.anchorX, item.capsule.left + 12, item.capsule.left + capWidth - 12)
-            // stop just below the button: an upward arrow must not cross the control
-            item.path = 'M ' + lineX + ' ' + item.capsule.top + ' L ' + lineX + ' ' + (item.anchorY + 36)
+            if (row.text) value.push(h('span', { key: 'x', className: 'qtp-guideText' }, row.text))
+            return h('div', { key: row.label, className: 'qtp-guideRow' }, [
+              h('span', { key: 'l', className: 'qtp-guideLabel' }, row.label),
+              h('span', { key: 'v', className: 'qtp-guideValue' }, value),
+            ])
           })
-
-          // Bottom clusters share the space left under the top one: one row pitch
-          // for every row, shrinking the gap when the pane is short.
-          var bandTop = topStart + topItems.length * (capHeight + gap) + gap
-          var bandBottom = rect.height - barSpace
-          var rows = leftItems.length + rightItems.length
-          var pitch = capHeight + gap
-          if (rows > 1 && bandBottom - bandTop < rows * pitch) {
-            pitch = Math.max(capHeight + 2, (bandBottom - bandTop) / rows)
-          }
-          var stack = function (list, firstRow) {
-            list.forEach(function (item, index) {
-              var left = clamp(item.anchorX - capWidth / 2, 12, Math.max(12, rect.width - 12 - capWidth))
-              item.capsule = {
-                left: left,
-                top: bandBottom - capHeight - (index + firstRow) * pitch,
-                width: capWidth,
-                height: capHeight,
-              }
-              var lineX = clamp(item.anchorX, left + 12, left + capWidth - 12)
-              item.path = 'M ' + lineX + ' ' + (item.capsule.top + capHeight) +
-                ' L ' + lineX + ' ' + (item.anchorY - 6)
-            })
-          }
-          centreItems.forEach(function (item) {
-            item.capsule = {
-              left: Math.round(rect.width / 2),
-              top: 46,
-              width: 0,
-              height: capHeight,
-            }
-          })
-
-          stack(leftItems, 0)
-          stack(rightItems, leftItems.length)
-
-          setAnnotations({ width: rect.width, height: rect.height, items: items })
-        }
-        compute()
-        var observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(compute)
-        if (observer) observer.observe(pane)
-        return function () { if (observer) observer.disconnect() }
-      }, [helpOpen])
-
-      var renderHelpLayer = function () {
-        var children = []
-        if (annotations !== null) {
-          var masks = annotations.items.map(function (item) {
-            return h('rect', {
-              key: 'm-' + item.spec.key,
-              x: item.capsule.left, y: item.capsule.top,
-              width: item.capsule.width, height: item.capsule.height,
-              rx: 8, fill: 'black',
-            })
-          })
-          children.push(h('svg', {
-            key: 'arrows',
-            className: 'qtp-helpArrows',
-            width: annotations.width,
-            height: annotations.height,
-            viewBox: '0 0 ' + annotations.width + ' ' + annotations.height,
-          }, [
-            h('defs', { key: 'd' }, [
-              h('mask', { key: 'm', id: 'qtp-card-mask', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: annotations.width, height: annotations.height },
-                [h('rect', { key: 'bg', x: 0, y: 0, width: annotations.width, height: annotations.height, fill: 'white' })].concat(masks)),
-              h('marker', {
-                key: 'a', id: 'qtp-arrow-head', viewBox: '0 0 10 10', refX: 7, refY: 5,
-                markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
-              }, h('path', { d: 'M1.5 1.5 L7 5 L1.5 8.5', fill: 'none', stroke: 'rgba(214,226,255,.85)', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
-              h('marker', {
-                key: 'b', id: 'qtp-arrow-head-accent', viewBox: '0 0 10 10', refX: 7, refY: 5,
-                markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
-              }, h('path', { d: 'M1.5 1.5 L7 5 L1.5 8.5', fill: 'none', stroke: 'rgba(127,178,255,.95)', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
-            ]),
-          ].concat([
-            h('g', { key: 'lines', mask: 'url(#qtp-card-mask)' }, annotations.items.filter(function (item) {
-              return typeof item.path === 'string'
-            }).map(function (item) {
-              return h('path', { key: item.spec.key, d: item.path, className: 'qtp-arrow', 'data-accent': item.spec.accent ? 'true' : 'false' })
-            })),
-          ])))
-          annotations.items.forEach(function (item) {
-            children.push(h('div', {
-              key: 'c-' + item.spec.key,
-              className: 'qtp-callout',
-              'data-center': item.spec.side === 'center' ? 'true' : 'false',
-              style: item.spec.side === 'center'
-                ? { left: item.capsule.left + 'px', top: item.capsule.top + 'px' }
-                : { left: item.capsule.left + 'px', top: item.capsule.top + 'px', width: item.capsule.width + 'px' },
-            }, [
-              h('span', { key: 'l', className: 'qtp-calloutLabel' }, item.spec.label),
-              item.spec.keys ? item.spec.keys.map(function (key, index) {
-                return h('span', { key: 'k' + index, className: 'qtp-calloutKey' }, key)
-              }) : null,
-              item.spec.hint ? h('span', { key: 'h', className: 'qtp-calloutHint' }, item.spec.hint) : null,
-            ]))
-          })
-        }
-        return h('div', { key: 'help', className: 'qtp-helpLayer' }, children)
+          content.push(h('div', { key: group.title, className: 'qtp-guideGroup' },
+            [h('div', { key: 't', className: 'qtp-guideGroupTitle' }, group.title)].concat(rows)))
+        })
+        return h('div', { key: 'help', className: 'qtp-helpLayer' }, [
+          h('div', { key: 'card', className: 'qtp-guide' }, content),
+        ])
       }
 
       var body
@@ -1536,7 +1437,7 @@ window.__ModuleLoader__.load({
       }
 
       return h('div', { ref: paneRef, className: 'qtp-pane' }, [
-        helpOpen ? renderHelpLayer() : null,
+        helpOpen ? renderGuide() : null,
         h('button', {
           key: 'copyBtn',
           className: 'qtp-helpBtn qtp-copyBtn',

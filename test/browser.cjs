@@ -514,6 +514,8 @@ async function runMode(cdp, base, mode, options = {}) {
     if (i.helpClickThrough !== true) bad.push('help: the layer is not click-through')
     if (i.clickThroughWorked !== true) bad.push('help: a click on the layer did not reach the player')
     if (i.helpClosedAfter !== true) bad.push('help: the ? button did not close the layer')
+    if (!i.helpText || !i.helpText.includes('剪辑切片')) bad.push('help: the guide lost its clip row')
+    if (!i.helpText || !i.helpText.includes('滚轮')) bad.push('help: the guide does not mention wheel zoom')
     const heights = (report.tab.snapshot || {}).transportHeights
     if (!heights || heights.clock !== heights.play) bad.push(`transport: the clock is not as tall as play (${JSON.stringify(heights)})`)
     const clipBtn = (report.tab.snapshot || {}).clipButton
