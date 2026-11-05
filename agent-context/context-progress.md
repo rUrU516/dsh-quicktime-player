@@ -37,3 +37,27 @@ test/               smoke (render) and browser (real Chromium via CDP) harnesses
 - `~/.dsh/quicktime-player.log` is the client-side diagnostic channel (`tab-mount | meta | error | failed`).
 - Hot reload: editing `client.js` is picked up by client-hmr within seconds. Editing `index.js` needs a profile
   recompose — touching the profile's `cordis.patch.yml` triggers one; no restart required.
+
+## Since 0.1.4 (shipped as 0.1.5)
+
+- **Frame copy**: camera button left of `?`; `<video>` now loads with `crossOrigin="anonymous"` (the loopback route
+  already sends `access-control-allow-origin: *`), so the canvas is not tainted; clipboard first, download fallback;
+  a centred toast confirms.
+- **Clip markers**: the scissors button drops a marker at the playhead; only the last two survive; both are neutral
+  white badges joined by a dashed line, with the range underlaid on the progress track.
+- **Clip export**: hovering the scissors reveals save/clear. `GET <prefix>/capabilities` reports whether the Host
+  found `ffmpeg` (probes `$QTP_FFMPEG`, `/opt/homebrew/bin/ffmpeg`, `/usr/local/bin/ffmpeg`, `PATH`, cached 60 s);
+  `GET <prefix>/clip?sessionId&path&from&to` runs a stream copy (`-ss/-t -c copy`, keyframe-aligned) into
+  `os.tmpdir()` and returns it as an attachment, deleting the temp file afterwards. No ffmpeg → the client says so;
+  there is deliberately no browser-side fallback.
+- **Guide rewritten**: no measuring, no arrows, no masks. One top-left card driven by `HELP_GROUPS` (group → rows of
+  `label / keys / text / icon`), with the real control glyphs inline. Roughly 120 lines of geometry code removed.
+- **Controls one size up**: transport buttons 32 px (glyphs 18 px), corner buttons 30 px, header 34 px; the clock is
+  as tall as the play button.
+- **`?` button** carries an idle cyan halo (not hover-only) and respects `prefers-reduced-motion`.
+
+## Open
+
+- Update checker: button left of the camera, green dot / red exclamation, once-a-day check, click to re-check
+  (agreed in discussion, not built).
+- `-movflags +faststart` for clips and an exact-frame re-encode mode: offered, not decided.

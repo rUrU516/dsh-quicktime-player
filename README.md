@@ -18,9 +18,13 @@ A sidebar video player for **DeepSeek Harness** — streaming playback with seek
 - **Own controls.** Play/pause, time ⇄ frame number, speed slider (0.2× – 5×, 0.2 steps), loop, vertical volume
   popup, mute, picture-in-picture, fullscreen. The chrome fades out while the mouse is idle.
 - **Frame stepping.** <kbd>←</kbd> / <kbd>→</kbd> step one frame; the frame rate is measured from delivered frames.
-- **Built-in guide.** The `?` in the corner lays a nearly invisible, click-through sheet over the player and
-  points at every control with a short dashed line — play/pause, the time/frame toggle, the progress bar, rate,
-  loop, volume, picture-in-picture and fullscreen.
+- **Copy the current frame.** The camera button next to `?` writes the frame under the playhead to the clipboard as
+  a PNG (falling back to a download), with a toast confirming it.
+- **Trim a range.** The scissors button drops a marker at the playhead; two markers survive, linked by a dashed line,
+  and hovering the scissors reveals save/clear. Saving runs the Host's `ffmpeg` with a stream copy, so the clip is
+  byte-identical to the source — no re-encode, cut on the nearest keyframe. Without `ffmpeg` the button says so.
+- **Built-in guide.** The `?` in the corner overlays a nearly invisible, click-through sheet with one row per
+  feature — keys, gestures and the control glyphs themselves.
 - **Keyboard is never stolen.** While focus is inside the pane — even on a slider — <kbd>Space</kbd> and the arrows
   stay with the player.
 
