@@ -20,11 +20,8 @@
  *    player therefore asks for a source URL, and this plugin answers with a
  *    tokenized loopback URL when it can, falling back to the same-origin route.
  *
- * Configuration (all optional, set on the `quicktime-player` row):
- *   routePrefix   string   '/quicktime'      same-origin route prefix
- *   loopback      boolean  true              start the tokenized loopback media server
- *   maxBytes      number   4 GiB             refuse larger files with 413
- *   extraRoots    string[] []                extra path roots allowed besides the session cwd
+ * Nothing here is configurable: the route prefix, the 4 GiB ceiling and the loopback media server are fixed, and
+ * files are confined to the session working directory.
  */
 import { createReadStream, readFileSync } from 'node:fs'
 import { execFileSync, spawn } from 'node:child_process'
@@ -64,26 +61,9 @@ const MIME = {
   '.3g2': 'video/3gpp2',
 }
 
-const DEFAULTS = {
-  routePrefix: '/quicktime',
-  loopback: true,
-  maxBytes: 4 * 1024 * 1024 * 1024,
-  extraRoots: [],
-}
-
-function normalizeConfig(raw) {
-  const input = raw !== null && typeof raw === 'object' ? raw : {}
-  let prefix = typeof input.routePrefix === 'string' && input.routePrefix.startsWith('/')
-    ? input.routePrefix.replace(/\/+$/u, '')
-    : DEFAULTS.routePrefix
-  if (prefix.length === 0) prefix = DEFAULTS.routePrefix
-  return {
-    routePrefix: prefix,
-    loopback: input.loopback === undefined ? DEFAULTS.loopback : input.loopback !== false,
-    maxBytes: Number.isSafeInteger(input.maxBytes) && input.maxBytes > 0 ? input.maxBytes : DEFAULTS.maxBytes,
-    extraRoots: Array.isArray(input.extraRoots) ? input.extraRoots.filter((entry) => typeof entry === 'string' && entry.length > 0) : [],
-  }
-}
+/** Fixed behaviour: this plugin exposes no configuration by design. */
+const ROUTE_PREFIX = '/quicktime'
+const MAX_BYTES = 4 * 1024 * 1024 * 1024
 
 function diagnosePath() {
   const home = typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== ''
@@ -248,11 +228,10 @@ function streamFile(request, res, target, size, type, extraHeaders) {
  * Homebrew prefixes are probed explicitly before falling back to PATH lookup.
  */
 const FFMPEG_CANDIDATES = () => [
-  process.env.QTP_FFMPEG,
   '/opt/homebrew/bin/ffmpeg',
   '/usr/local/bin/ffmpeg',
   'ffmpeg',
-].filter((entry) => typeof entry === 'string' && entry !== '')
+]
 
 let ffmpegProbe
 
@@ -315,7 +294,7 @@ function renderClip(ffmpegPath, input, from, to, target) {
  * while better-sidebar hands out absolute ones. Both are accepted; a relative
  * path is resolved against the session cwd before the containment check.
  */
-async function resolveRequestedFile(ctx, config, sessionId, rawPath) {
+async function resolveRequestedFile(ctx, sessionId, rawPath) {
   if (typeof sessionId !== 'string' || sessionId === '') throw new HttpError(400, 'sessionId is required')
   if (typeof rawPath !== 'string' || rawPath === '') throw new HttpError(400, 'path is required')
   if (rawPath.includes('\0')) throw new HttpError(400, 'invalid path')
@@ -326,7 +305,7 @@ async function resolveRequestedFile(ctx, config, sessionId, rawPath) {
 
   const absolute = rawPath.startsWith('/') || /^[A-Za-z]:[\\/]/u.test(rawPath) || rawPath.startsWith('\\\\')
   const target = absolute ? resolve(rawPath) : resolve(sessionCwd, rawPath)
-  const allowed = [sessionCwd, ...config.extraRoots].some((root) => isWithin(resolve(root), target))
+  const allowed = isWithin(resolve(sessionCwd), target)
   if (!allowed) throw new HttpError(403, 'path is outside the session working directory')
 
   let info
@@ -337,7 +316,7 @@ async function resolveRequestedFile(ctx, config, sessionId, rawPath) {
   }
   if (!info.isFile()) throw new HttpError(400, 'not a regular file')
   if (info.size === 0) throw new HttpError(400, 'empty file')
-  if (info.size > config.maxBytes) throw new HttpError(413, `file exceeds ${config.maxBytes} bytes`)
+  if (info.size > MAX_BYTES) throw new HttpError(413, `file exceeds ${MAX_BYTES} bytes`)
   return { target, size: info.size, type: MIME[extname(target).toLowerCase()] ?? 'application/octet-stream', name: basename(target) }
 }
 
@@ -360,10 +339,8 @@ function fail(res, error) {
 /**
  * Register the routes and (optionally) the loopback media server.
  * @param ctx - Host plugin context carrying `webServer`.
- * @param rawConfig - row configuration, validated by {@link normalizeConfig}.
  */
-export function apply(ctx, rawConfig) {
-  const config = normalizeConfig(rawConfig)
+export function apply(ctx) {
   const token = randomBytes(18).toString('base64url')
   const state = { port: 0 }
 
@@ -373,16 +350,16 @@ export function apply(ctx, rawConfig) {
   }
   const sameOriginUrl = (sessionId, path) => {
     const query = new URLSearchParams({ sessionId, path })
-    return `${config.routePrefix}/stream?${query.toString()}`
+    return `${ROUTE_PREFIX}/stream?${query.toString()}`
   }
 
   /** `GET <prefix>/source` — describe the file and hand back a playable URL. */
   const handleSource = async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://dsh.internal')
-    const file = await resolveRequestedFile(ctx, config, url.searchParams.get('sessionId'), url.searchParams.get('path'))
+    const file = await resolveRequestedFile(ctx, url.searchParams.get('sessionId'), url.searchParams.get('path'))
     const sessionId = url.searchParams.get('sessionId')
     const path = url.searchParams.get('path')
-    const useLoopback = config.loopback && state.port !== 0
+    const useLoopback = state.port !== 0
     sendJson(res, 200, {
       url: useLoopback ? loopbackUrl(sessionId, path) : sameOriginUrl(sessionId, path),
       transport: useLoopback ? 'loopback' : 'same-origin',
@@ -396,7 +373,7 @@ export function apply(ctx, rawConfig) {
   /** `GET|HEAD <prefix>/stream` — same-origin Range stream (loopback fallback). */
   const handleStream = async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://dsh.internal')
-    const file = await resolveRequestedFile(ctx, config, url.searchParams.get('sessionId'), url.searchParams.get('path'))
+    const file = await resolveRequestedFile(ctx, url.searchParams.get('sessionId'), url.searchParams.get('path'))
     streamFile(req, res, file.target, file.size, file.type)
   }
 
@@ -481,7 +458,7 @@ export function apply(ctx, rawConfig) {
     if (!Number.isFinite(from) || !Number.isFinite(to) || to - from < 0.1) {
       throw new HttpError(400, 'a range of at least 0.1 s is required')
     }
-    const file = await resolveRequestedFile(ctx, config, url.searchParams.get('sessionId'), url.searchParams.get('path'))
+    const file = await resolveRequestedFile(ctx, url.searchParams.get('sessionId'), url.searchParams.get('path'))
     const ffmpeg = findFfmpeg()
     if (!ffmpeg.available) throw new HttpError(501, 'ffmpeg is not available on this Host')
     const extension = extname(file.target).toLowerCase() || '.mp4'
@@ -489,7 +466,7 @@ export function apply(ctx, rawConfig) {
     try {
       await renderClip(ffmpeg.path, file.target, Math.max(0, from), to, target)
       const info = await stat(target)
-      if (info.size > config.maxBytes) throw new HttpError(413, 'clip exceeds the configured size limit')
+      if (info.size > MAX_BYTES) throw new HttpError(413, 'clip exceeds the size limit')
       const stamp = (seconds) => `${Math.floor(seconds / 60)}m${String(Math.round(seconds % 60)).padStart(2, '0')}s`
       const name = `${basename(file.target, extension)}.trim-${stamp(Math.max(0, from))}-${stamp(to)}${extension}`
       res.writeHead(200, {
@@ -534,7 +511,7 @@ export function apply(ctx, rawConfig) {
       }
       const pathname = new URL(req.url ?? '/', 'http://dsh.internal').pathname
       try {
-        if (pathname === `${config.routePrefix}/source`) {
+        if (pathname === `${ROUTE_PREFIX}/source`) {
           if (req.method !== 'GET') {
             sendText(res, 405, 'method not allowed')
             return
@@ -542,7 +519,7 @@ export function apply(ctx, rawConfig) {
           await handleSource(req, res)
           return
         }
-        if (pathname === `${config.routePrefix}/stream`) {
+        if (pathname === `${ROUTE_PREFIX}/stream`) {
           if (req.method !== 'GET' && req.method !== 'HEAD') {
             sendText(res, 405, 'method not allowed')
             return
@@ -550,7 +527,7 @@ export function apply(ctx, rawConfig) {
           await handleStream(req, res)
           return
         }
-        if (pathname === `${config.routePrefix}/diag`) {
+        if (pathname === `${ROUTE_PREFIX}/diag`) {
           if (req.method !== 'POST') {
             sendText(res, 405, 'method not allowed')
             return
@@ -558,23 +535,23 @@ export function apply(ctx, rawConfig) {
           await handleDiag(req, res)
           return
         }
-        if (pathname === `${config.routePrefix}/version`) {
+        if (pathname === `${ROUTE_PREFIX}/version`) {
           await handleVersion(req, res)
           return
         }
-        if (pathname === `${config.routePrefix}/capabilities`) {
+        if (pathname === `${ROUTE_PREFIX}/capabilities`) {
           await handleCapabilities(req, res)
           return
         }
-        if (pathname === `${config.routePrefix}/clip`) {
+        if (pathname === `${ROUTE_PREFIX}/clip`) {
           await handleClip(req, res)
           return
         }
-        if (pathname === `${config.routePrefix}/icon`) {
+        if (pathname === `${ROUTE_PREFIX}/icon`) {
           await handleIcon(req, res)
           return
         }
-        if (pathname === `${config.routePrefix}/_graph`) {
+        if (pathname === `${ROUTE_PREFIX}/_graph`) {
           await handleGraph(req, res)
           return
         }
@@ -583,10 +560,10 @@ export function apply(ctx, rawConfig) {
         fail(res, error)
       }
     }
-    return ctx.webServer.register({ kind: 'prefix', path: config.routePrefix, handler })
+    return ctx.webServer.register({ kind: 'prefix', path: ROUTE_PREFIX, handler })
   }, 'quicktime-player: routes')
 
-  if (config.loopback) {
+  {
     ctx.effect(() => {
       const server = createServer((req, res) => {
         const url = new URL(req.url ?? '/', 'http://dsh.internal')
@@ -598,7 +575,7 @@ export function apply(ctx, rawConfig) {
           sendText(res, 405, 'method not allowed')
           return
         }
-        resolveRequestedFile(ctx, config, url.searchParams.get('sessionId'), url.searchParams.get('path'))
+        resolveRequestedFile(ctx, url.searchParams.get('sessionId'), url.searchParams.get('path'))
           .then((file) => streamFile(req, res, file.target, file.size, file.type, { 'access-control-allow-origin': '*' }))
           .catch((error) => fail(res, error))
       })
@@ -619,7 +596,7 @@ export function apply(ctx, rawConfig) {
 
   ctx.effect(() => {
     ctx.on('webserver/index-inject', (table) => {
-      table.push({ kind: 'global', name: '__DSH_QUICKTIME_PLAYER__', value: { routePrefix: config.routePrefix } })
+      table.push({ kind: 'global', name: '__DSH_QUICKTIME_PLAYER__', value: { routePrefix: ROUTE_PREFIX } })
     })
   }, 'quicktime-player: index injection')
 }

@@ -1,6 +1,7 @@
 # dsh-quicktime-player
 
-A sidebar video player for **DeepSeek Harness** — streaming playback with seek, wheel zoom and drag pan.
+A sidebar video player for **DeepSeek Harness** — streaming playback with seek, wheel zoom and drag pan, plus frame
+capture and clip export.
 
 ![the player docked in the right sidebar](https://raw.githubusercontent.com/rUrU516/dsh-quicktime-player/main/docs/screenshot.jpg)
 
@@ -25,8 +26,8 @@ A sidebar video player for **DeepSeek Harness** — streaming playback with seek
   byte-identical to the source — no re-encode, cut on the nearest keyframe. Without `ffmpeg` the button says so.
 - **Check for updates.** The cloud button next to the camera asks the Host for this package's installed version and
   the registry's latest, then reports the answer in a small dialog. Manual only: no polling, no badge, no auto-install.
-- **Built-in guide.** The `?` in the corner overlays a nearly invisible, click-through sheet with one row per
-  feature — keys, gestures and the control glyphs themselves.
+- **Built-in guide.** The `?` in the corner lays a click-through guide card over the player: one row per feature,
+  with the same control glyphs you see in the toolbar. It is plain text — no arrows to keep in sync.
 - **Keyboard is never stolen.** While focus is inside the pane — even on a slider — <kbd>Space</kbd> and the arrows
   stay with the player.
 
@@ -37,6 +38,16 @@ dsh plugin --profile <profile> add dsh-quicktime-player
 ```
 
 Reopen the window once so the client bundle is picked up.
+
+## Requirements
+
+- DSH with profile bundles (the package declares `dsh.bundle.patch`).
+- **`ffmpeg` on the Host, only for clip export.** It is looked up at `/opt/homebrew/bin/ffmpeg`,
+  `/usr/local/bin/ffmpeg`, then `ffmpeg` on `PATH`. Without it everything else still works; the save button says the
+  Host has no `ffmpeg` instead of failing silently.
+
+There is nothing to configure: the route prefix, the 4 GiB ceiling, the loopback media server and the working-directory
+confinement are fixed.
 
 ## Controls
 
@@ -51,17 +62,10 @@ Reopen the window once so the client bundle is picked up.
 | <kbd>0</kbd> | reset zoom |
 | <kbd>+</kbd> / <kbd>−</kbd> | zoom in / out |
 | click the clock | switch between time and frame numbers |
-
-## Configuration
-
-Optional, on the `quicktime-player` row:
-
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `routePrefix` | `/quicktime` | same-origin route prefix |
-| `loopback` | `true` | tokenized `127.0.0.1` media source (what makes Desktop seek work) |
-| `maxBytes` | `4 GiB` | larger files are refused with `413` |
-| `extraRoots` | `[]` | extra path roots allowed besides the session working directory |
+| the scissors button | drop a clip marker at the playhead (the last two are kept) |
+| hover the scissors | reveal save / clear for the marked range |
+| the camera button | copy the current frame to the clipboard as a PNG |
+| the cloud button | check the registry for a newer version |
 
 ## How it works
 
@@ -69,8 +73,11 @@ Optional, on the `quicktime-player` row:
   (`dsh-resource://file/**/*.mp4`, …). The registry ranks tab types by band, then by pattern length, then by
   registration order — a longer, video-only glob outranks a sidebar plugin's generic `dsh-resource://file/**`, so
   videos route here and every other file keeps its usual viewer.
-- **One Host route.** `ctx.webServer.register` serves `/quicktime/source`, `/quicktime/stream` and the tokenized
-  loopback port. Paths are confined to the session working directory.
+- **One Host route.** `ctx.webServer.register` serves `/quicktime/source`, `/quicktime/stream`, `/quicktime/clip`,
+  `/quicktime/capabilities`, `/quicktime/version` and the tokenized loopback port. Paths are confined to the session
+  working directory.
+- **Clip export** shells out to `ffmpeg` with `-ss / -t -c copy`: the streams are copied, not re-encoded, so the cut
+  lands on the nearest keyframe and the frame data stays byte-identical. The temp file is deleted after it is sent.
 - No dependency on any other plugin: the core is the tab type plus that route.
 
 `.mkv`, `.avi`, `.wmv` and `.flv` are accepted but Chromium cannot decode them; the player reports that instead of
@@ -79,6 +86,8 @@ pretending to play.
 ## Troubleshooting
 
 - `~/.dsh/quicktime-player.log` — one JSON line per player event (source resolved, metadata, decode errors).
+- "宿主上没有 ffmpeg" when saving a clip — install `ffmpeg` (`brew install ffmpeg`) and reopen the window.
+- The update check says "检查失败" — the Host could not reach `registry.npmjs.org` (offline, proxy, or DNS).
 - `GET /quicktime/_graph` — dev probe for whether the client bundle is in the module graph.
 
 ## License

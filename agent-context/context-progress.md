@@ -68,6 +68,12 @@ test/               smoke (render) and browser (real Chromium via CDP) harnesses
 
 Copy frame, clip export, the row-based guide, the larger controls and the manual update check all ship here.
 
+## No configuration
+
+- The Host exposes **no config schema and no env overrides**: route prefix `/quicktime`, 4 GiB ceiling, loopback media
+  server and session-cwd confinement are constants (`ROUTE_PREFIX`, `MAX_BYTES`). `apply(ctx)` ignores any row config.
+- `ffmpeg` is probed at `/opt/homebrew/bin`, `/usr/local/bin`, then `PATH` — nothing to point anywhere.
+
 ## Open
 
 - `-movflags +faststart` for clips and an exact-frame re-encode mode: offered, not decided.

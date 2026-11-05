@@ -1,6 +1,6 @@
 {
   "name": "dsh-quicktime-player",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Sidebar video player for DeepSeek Harness: streaming playback with seek, wheel zoom, drag pan and a custom control bar",
   "repository": {
     "type": "git",
