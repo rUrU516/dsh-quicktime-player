@@ -51,7 +51,6 @@ window.__ModuleLoader__.load({
       { key: 'pip', side: 'right', label: '\u753b\u4e2d\u753b' },
       { key: 'fs', side: 'right', label: '\u5168\u5c4f', hint: '\u53cc\u51fb\u753b\u9762' },
       { key: 'help', side: 'top', label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
-      { key: 'copy', side: 'top', label: '\u590d\u5236\u5f53\u524d\u5e27', hint: 'PNG' },
     ]
 
     /**
@@ -1220,7 +1219,8 @@ window.__ModuleLoader__.load({
               height: capHeight,
             }
             var lineX = clamp(item.anchorX, item.capsule.left + 12, item.capsule.left + capWidth - 12)
-            item.path = 'M ' + lineX + ' ' + item.capsule.top + ' L ' + lineX + ' ' + (item.anchorY - 12)
+            // stop just below the button: an upward arrow must not cross the control
+            item.path = 'M ' + lineX + ' ' + item.capsule.top + ' L ' + lineX + ' ' + (item.anchorY + 36)
           })
 
           // Bottom clusters share the space left under the top one: one row pitch
@@ -1260,6 +1260,14 @@ window.__ModuleLoader__.load({
       var renderHelpLayer = function () {
         var children = []
         if (annotations !== null) {
+          var masks = annotations.items.map(function (item) {
+            return h('rect', {
+              key: 'm-' + item.spec.key,
+              x: item.capsule.left, y: item.capsule.top,
+              width: item.capsule.width, height: item.capsule.height,
+              rx: 8, fill: 'black',
+            })
+          })
           children.push(h('svg', {
             key: 'arrows',
             className: 'qtp-helpArrows',
@@ -1268,6 +1276,8 @@ window.__ModuleLoader__.load({
             viewBox: '0 0 ' + annotations.width + ' ' + annotations.height,
           }, [
             h('defs', { key: 'd' }, [
+              h('mask', { key: 'm', id: 'qtp-card-mask', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: annotations.width, height: annotations.height },
+                [h('rect', { key: 'bg', x: 0, y: 0, width: annotations.width, height: annotations.height, fill: 'white' })].concat(masks)),
               h('marker', {
                 key: 'a', id: 'qtp-arrow-head', viewBox: '0 0 10 10', refX: 7, refY: 5,
                 markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
@@ -1277,9 +1287,11 @@ window.__ModuleLoader__.load({
                 markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
               }, h('path', { d: 'M1.5 1.5 L7 5 L1.5 8.5', fill: 'none', stroke: 'rgba(127,178,255,.95)', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
             ]),
-          ].concat(annotations.items.map(function (item) {
-            return h('path', { key: item.spec.key, d: item.path, className: 'qtp-arrow', 'data-accent': item.spec.accent ? 'true' : 'false' })
-          }))))
+          ].concat([
+            h('g', { key: 'lines', mask: 'url(#qtp-card-mask)' }, annotations.items.map(function (item) {
+              return h('path', { key: item.spec.key, d: item.path, className: 'qtp-arrow', 'data-accent': item.spec.accent ? 'true' : 'false' })
+            })),
+          ])))
           annotations.items.forEach(function (item) {
             children.push(h('div', {
               key: 'c-' + item.spec.key,
