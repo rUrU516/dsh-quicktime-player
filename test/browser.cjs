@@ -442,6 +442,21 @@ async function runMode(cdp, base, mode, options = {}) {
       return v ? { time: Math.round(v.currentTime * 10) / 10, rate: v.playbackRate } : null
     })()`)
 
+    // the guide's feedback link asks the Host to open the repo
+    const feedbackCall = await (async () => {
+      await evaluate(`(() => { const l = document.querySelector('[data-qtp="help"]'); if (l) l.click(); return true })()`)
+      await sleep(300)
+      const clicked = await evaluate(`(async () => {
+        const link = document.querySelector('.qtp-guideLink')
+        if (!link) return null
+        link.click()
+        await new Promise((r) => setTimeout(r, 300))
+        return (window.__linkCalls || []).slice(-1)[0] || null
+      })()`, true)
+      await evaluate(`(() => { const l = document.querySelector('[data-qtp="help"]'); if (l) l.click(); return true })()`)
+      return clicked
+    })()
+
     interactions = {
       copyRects: copyButton.value ? copyButton.value.rects : null,
       clipMarks: marks.value,
@@ -463,6 +478,7 @@ async function runMode(cdp, base, mode, options = {}) {
       helpClickThrough: helpOpen.value ? helpOpen.value.clickThrough : null,
       clickThroughWorked: pausedBeforeThrough.value !== pausedAfterThrough.value,
       helpText: helpOpen.value ? helpOpen.value.text : null,
+      helpFeedback: feedbackCall.value,
       helpGlyph: helpOpen.value ? helpOpen.value.glyph : null,
       helpClosedAfter: helpClosedAfter.value,
       timeBefore: before.value.time,
@@ -624,6 +640,7 @@ async function runMode(cdp, base, mode, options = {}) {
       if (!uc.leftOfCopy) bad.push('update: the button is not left of the camera button')
     }
     if (!i.helpText || !i.helpText.includes('剪辑切片')) bad.push('help: the guide lost its clip row')
+    if (!i.helpFeedback || !i.helpFeedback.includes('to=feedback')) bad.push(`help: the feedback link did not reach the Host (${i.helpFeedback})`)
     if (!i.helpText || !i.helpText.includes('滚轮')) bad.push('help: the guide does not mention wheel zoom')
     const heights = (report.tab.snapshot || {}).transportHeights
     if (!heights || heights.clock !== heights.play) bad.push(`transport: the clock is not as tall as play (${JSON.stringify(heights)})`)

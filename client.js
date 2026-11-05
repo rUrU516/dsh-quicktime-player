@@ -204,6 +204,10 @@ window.__ModuleLoader__.load({
       '.qtp-guideRate{font:10.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#dfe3ea}',
       '.qtp-guideKey{flex:none;font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.10);border:.5px solid rgba(255,255,255,.18);border-radius:4px;padding:0 5px;color:#dfe3ea}',
       '.qtp-guideText{color:#a8b0bc;font-size:12px}',
+      '.qtp-guideFoot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;padding-top:8px;border-top:.5px solid rgba(255,255,255,.10)}',
+      '.qtp-guideFootText{font-size:11px;color:#8f96a2}',
+      '.qtp-guideLink{flex:none;background:transparent;border:0;padding:0;color:#7fb7ff;font-size:11.5px;cursor:pointer}',
+      '.qtp-guideLink:hover{color:#a9cfff;text-decoration:underline}',
       '.qtp-helpLayer>*{pointer-events:none}',
       '.qtp-helpLayerNote{font-size:11px;color:#c6ccd6;line-height:1.6;max-width:280px;text-shadow:0 1px 8px rgba(0,0,0,.85)}',
       '.qtp-empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;min-height:0}',
@@ -1618,6 +1622,23 @@ window.__ModuleLoader__.load({
 
       var closeCheck = function () { setCheckResult(null) }
 
+      var openFeedback = function () {
+        fetch(routePrefix() + '/link?to=feedback', { credentials: 'same-origin' })
+          .then(function (response) {
+            if (response.ok) return
+            throw new Error('HTTP ' + response.status)
+          })
+          .catch(function () {
+            var fallback = 'https://github.com/rUrU516/dsh-quicktime-player/issues/new?template=feedback.yml'
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(fallback).catch(function () {})
+              showToast('打不开浏览器，链接已复制')
+              return
+            }
+            showToast('打开失败')
+          })
+      }
+
       var renderCheckDialog = function () {
         if (checkResult === null) return null
         var version = function (text) { return typeof text === 'string' && text !== '' ? text : '\u2014' }
@@ -1684,6 +1705,15 @@ window.__ModuleLoader__.load({
           content.push(h('div', { key: group.title, className: 'qtp-guideGroup' },
             [h('div', { key: 't', className: 'qtp-guideGroupTitle' }, group.title)].concat(rows)))
         })
+        content.push(h('div', { key: 'foot', className: 'qtp-guideFoot' }, [
+          h('span', { key: 't', className: 'qtp-guideFootText' }, '有问题或想要的功能？'),
+          h('button', {
+            key: 'b',
+            className: 'qtp-guideLink',
+            onClick: function (event) { event.stopPropagation(); openFeedback() },
+          }, '去 GitHub 提 issue \u2192'),
+        ]))
+
         return h('div', { key: 'help', className: 'qtp-helpLayer' }, [
           h('div', { key: 'card', className: 'qtp-guide' }, content),
         ])

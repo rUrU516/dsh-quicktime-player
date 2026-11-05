@@ -1,0 +1,47 @@
+name: 反馈 / Feedback
+description: 报告问题，或者提一个想要的功能
+title: "[反馈] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        谢谢反馈。请尽量把下面填完整——尤其是"怎么复现"，没有复现步骤的问题很难定位。
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      description: 哪里不对、你原本期望是什么。
+      placeholder: 例如：点剪刀标记两段后，hover 出现的保存按钮点了没有反应。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 在右侧栏打开 sample.mp4
+        2. 点剪刀两次
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 插件版本
+      description: 播放器右上角云朵按钮 → 点一下，弹窗里会显示当前版本。
+      placeholder: 0.4.0
+    validations:
+      required: false
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 运行环境
+      options:
+        - macOS 桌面版
+        - Windows 桌面版
+        - Linux 桌面版
+        - 浏览器（127.0.0.1）
+        - 其他
+    validations:
+      required: false

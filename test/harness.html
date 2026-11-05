@@ -51,6 +51,11 @@
       return Promise.resolve(new Response(JSON.stringify({ ffmpeg: { available: true, path: '/usr/bin/ffmpeg', version: 'test' }, opener: { available: true } }),
         { status: 200, headers: { 'content-type': 'application/json' } }))
     }
+    if (url.indexOf('/quicktime/link') === 0) {
+      window.__linkCalls = window.__linkCalls || []
+      window.__linkCalls.push(url)
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } }))
+    }
     if (url.indexOf('/quicktime/open') === 0) {
       window.__openCalls = window.__openCalls || []
       window.__openCalls.push(url)

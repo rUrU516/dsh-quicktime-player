@@ -255,6 +255,21 @@ function findFfmpeg() {
   return value
 }
 
+/** The only external destinations this plugin will open. */
+const LINKS = {
+  feedback: 'https://github.com/rUrU516/dsh-quicktime-player/issues/new?template=feedback.yml',
+  repo: 'https://github.com/rUrU516/dsh-quicktime-player',
+}
+
+/** Run one detached opener and resolve as soon as it has spawned. */
+function spawnDetached(command) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command.bin, command.args, { detached: true, stdio: 'ignore' })
+    child.on('error', reject)
+    child.on('spawn', () => { child.unref(); resolve() })
+  })
+}
+
 /** How to hand one path to the OS. Returns null where there is no opener. */
 function opener(target, reveal) {
   if (process.platform === 'darwin') return { bin: 'open', args: reveal ? ['-R', target] : [target] }
@@ -450,6 +465,20 @@ export function apply(ctx) {
   }
 
   /**
+   * `GET <prefix>/link?to=feedback|repo` — open one of the fixed destinations in
+   * the desktop browser. A allowlist, never a user-supplied URL.
+   */
+  const handleLink = async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://dsh.internal')
+    const target = LINKS[url.searchParams.get('to') ?? '']
+    if (target === undefined) throw new HttpError(404, 'unknown link')
+    const command = opener(target, false)
+    if (command === null) throw new HttpError(501, 'this platform has no desktop opener')
+    await spawnDetached(command)
+    sendJson(res, 200, { ok: true, url: target })
+  }
+
+  /**
    * `GET <prefix>/open?sessionId&path&action=open|reveal` — hand the file to the
    * desktop. Staying on this side avoids depending on a client-side Remote seam.
    */
@@ -459,11 +488,7 @@ export function apply(ctx) {
     const reveal = url.searchParams.get('action') === 'reveal'
     const command = opener(file.target, reveal)
     if (command === null) throw new HttpError(501, 'this platform has no desktop opener')
-    await new Promise((resolve, reject) => {
-      const child = spawn(command.bin, command.args, { detached: true, stdio: 'ignore' })
-      child.on('error', reject)
-      child.on('spawn', () => { child.unref(); resolve() })
-    })
+    await spawnDetached(command)
     sendJson(res, 200, { ok: true })
   }
 
@@ -572,6 +597,10 @@ export function apply(ctx) {
         }
         if (pathname === `${ROUTE_PREFIX}/capabilities`) {
           await handleCapabilities(req, res)
+          return
+        }
+        if (pathname === `${ROUTE_PREFIX}/link`) {
+          await handleLink(req, res)
           return
         }
         if (pathname === `${ROUTE_PREFIX}/open`) {
