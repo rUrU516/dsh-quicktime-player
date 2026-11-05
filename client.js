@@ -67,6 +67,8 @@ window.__ModuleLoader__.load({
           { label: '\u526a\u8f91\u5207\u7247', icon: 'scissors', text: '\u70b9\u4e24\u4e0b\u6807\u8bb0\uff0c\u60ac\u505c\u53ef\u4fdd\u5b58' },
           { label: '\u590d\u5236\u5f53\u524d\u5e27', icon: 'camera', text: 'PNG \u8fdb\u526a\u8d34\u677f' },
           { label: '\u68c0\u67e5\u66f4\u65b0', icon: 'cloud', text: '\u70b9\u4e00\u4e0b\uff0c\u5f39\u7a97\u544a\u8bc9\u4f60\u6709\u6ca1\u6709\u65b0\u7248' },
+          { label: '\u6253\u5f00\u6587\u4ef6', icon: 'external', text: '\u7528\u9ed8\u8ba4\u5e94\u7528\u64ad\u653e', needsOpener: true },
+          { label: '\u663e\u793a\u4f4d\u7f6e', icon: 'folder', text: '\u5728\u6587\u4ef6\u7ba1\u7406\u5668\u4e2d\u5b9a\u4f4d', needsOpener: true },
         ],
       },
     ]
@@ -1530,6 +1532,7 @@ window.__ModuleLoader__.load({
       var [local, setLocal] = useState(null)
       var [helpOpen, setHelpOpen] = useState(false)
       var [canExport, setCanExport] = useState(false)
+      var [canOpenFile, setCanOpenFile] = useState(false)
       var [checking, setChecking] = useState(false)
       var [checkResult, setCheckResult] = useState(null)
       var [toast, setToast] = useState('')
@@ -1594,7 +1597,11 @@ window.__ModuleLoader__.load({
         var aborted = false
         fetch(routePrefix() + '/capabilities', { credentials: 'same-origin' })
           .then(function (response) { return response.ok ? response.json() : null })
-          .then(function (info) { if (!aborted && info && info.ffmpeg) setCanExport(info.ffmpeg.available === true) })
+          .then(function (info) {
+            if (aborted || !info) return
+            if (info.ffmpeg) setCanExport(info.ffmpeg.available === true)
+            if (info.opener) setCanOpenFile(info.opener.available === true)
+          })
           .catch(function () {})
         return function () { aborted = true }
       }, [])
@@ -1655,10 +1662,12 @@ window.__ModuleLoader__.load({
           ]),
         ]
         HELP_GROUPS.forEach(function (group) {
-          var rows = group.rows.map(function (row) {
+          var rows = group.rows.filter(function (row) {
+            return !row.needsOpener || canOpenFile
+          }).map(function (row) {
             var value = []
             if (row.icon) {
-              var glyph = { scissors: IconScissors, camera: CopyGlyph, volume: IconVolume, expand: IconExpand, cloud: IconCloudUpdate, rate: null }[row.icon]
+              var glyph = { scissors: IconScissors, camera: CopyGlyph, volume: IconVolume, expand: IconExpand, cloud: IconCloudUpdate, external: IconOpenExternal, folder: IconReveal, rate: null }[row.icon]
               value.push(h('span', { key: 'i', className: 'qtp-guideIcon' }, row.icon === 'rate' ? h('span', { key: 'r', className: 'qtp-guideRate' }, '1\u00d7') : h(glyph, { key: 'g' })))
             }
             if (row.keys) {
