@@ -255,6 +255,18 @@ function findFfmpeg() {
   return value
 }
 
+/** How to hand one path to the OS. Returns null where there is no opener. */
+function opener(target, reveal) {
+  if (process.platform === 'darwin') return { bin: 'open', args: reveal ? ['-R', target] : [target] }
+  if (process.platform === 'win32') {
+    return reveal
+      ? { bin: 'explorer.exe', args: ['/select,' + target] }
+      : { bin: 'cmd.exe', args: ['/c', 'start', '', target] }
+  }
+  if (process.platform === 'linux') return { bin: 'xdg-open', args: [reveal ? dirname(target) : target] }
+  return null
+}
+
 /**
  * Render one clip with ffmpeg's stream copy: no re-encode, so the cut lands on
  * the nearest keyframe before `from`. Resolves with the temp file path.
@@ -437,6 +449,24 @@ export function apply(ctx) {
     sendJson(res, 200, { installed: installedVersion(), latest, error })
   }
 
+  /**
+   * `GET <prefix>/open?sessionId&path&action=open|reveal` — hand the file to the
+   * desktop. Staying on this side avoids depending on a client-side Remote seam.
+   */
+  const handleOpen = async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://dsh.internal')
+    const file = await resolveRequestedFile(ctx, url.searchParams.get('sessionId'), url.searchParams.get('path'))
+    const reveal = url.searchParams.get('action') === 'reveal'
+    const command = opener(file.target, reveal)
+    if (command === null) throw new HttpError(501, 'this platform has no desktop opener')
+    await new Promise((resolve, reject) => {
+      const child = spawn(command.bin, command.args, { detached: true, stdio: 'ignore' })
+      child.on('error', reject)
+      child.on('spawn', () => { child.unref(); resolve() })
+    })
+    sendJson(res, 200, { ok: true })
+  }
+
   /** `GET <prefix>/capabilities` — what this Host can actually do. */
   const handleCapabilities = async (req, res) => {
     const ffmpeg = findFfmpeg()
@@ -444,6 +474,7 @@ export function apply(ctx) {
       ffmpeg: ffmpeg.available
         ? { available: true, path: ffmpeg.path, version: ffmpeg.version }
         : { available: false },
+      opener: { available: opener('/tmp/x', false) !== null },
     })
   }
 
@@ -541,6 +572,10 @@ export function apply(ctx) {
         }
         if (pathname === `${ROUTE_PREFIX}/capabilities`) {
           await handleCapabilities(req, res)
+          return
+        }
+        if (pathname === `${ROUTE_PREFIX}/open`) {
+          await handleOpen(req, res)
           return
         }
         if (pathname === `${ROUTE_PREFIX}/clip`) {
