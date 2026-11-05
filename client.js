@@ -995,9 +995,7 @@ window.__ModuleLoader__.load({
           style: { borderRadius: Math.round(size * 0.225) + 'px', display: 'block' },
         })
       }
-      var rotate = function (degrees, cx, cy) {
-        return 'rotate(' + degrees + ' ' + cx + ' ' + cy + ')'
-      }
+      // Flat fallback when the Host icon route is unavailable: plate, ring, play.
       return h('svg', {
         width: size,
         height: size,
@@ -1006,11 +1004,9 @@ window.__ModuleLoader__.load({
         className: props && props.className,
         'aria-label': 'QuickTime Player',
       }, [
-        h('rect', { key: 'bg', x: 1, y: 1, width: 30, height: 30, rx: 7, fill: '#1b1c1f' }),
-        h('path', { key: 'tail', d: 'M25.1 22.2 L26.2 26.3 L22.2 25.1 Z', fill: '#d9dde3', stroke: '#d9dde3', strokeWidth: 0.8, strokeLinejoin: 'round' }),
-        h('circle', { key: 'ring', cx: 16, cy: 16, r: 10.4, fill: 'none', stroke: '#d9dde3', strokeWidth: 3 }),
-        h('circle', { key: 'disc', cx: 16, cy: 16, r: 7.6, fill: '#6a2bf0' }),
-        h('rect', { key: 'band', x: 14.5, y: 8.4, width: 3, height: 15.2, rx: 1.5, transform: rotate(-44, 16, 16), fill: '#efe9ff' }),
+        h('rect', { key: 'plate', x: 1, y: 1, width: 30, height: 30, rx: 7, fill: '#1b1c1f' }),
+        h('circle', { key: 'ring', cx: 16, cy: 16, r: 10, fill: 'none', stroke: '#8b5cf6', strokeWidth: 2.2 }),
+        h('path', { key: 'play', d: 'M14 11.6 L20.6 16 L14 20.4 Z', fill: '#f8f6ff', stroke: '#f8f6ff', strokeWidth: 1.6, strokeLinejoin: 'round' }),
       ])
     }
 
