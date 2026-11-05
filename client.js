@@ -105,7 +105,7 @@ window.__ModuleLoader__.load({
       '.qtp-markLine{position:absolute;left:-0.75px;top:18px;bottom:0;width:1.5px;border-radius:1px;background:rgba(238,241,245,.75)}',
       '.qtp-markBadge{position:absolute;left:-9px;top:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(18,20,24,.92);border:.5px solid rgba(238,241,245,.36);color:#e6eaf0}',
       '.qtp-markBadge svg{width:11px;height:11px}',
-      '.qtp-markRange{position:absolute;top:50%;height:0;border-top:1.5px dashed rgba(238,241,245,.45);transform:translateY(-50%);pointer-events:none;z-index:2}',
+      '.qtp-markRange{position:absolute;top:-9px;height:0;border-top:1.5px dashed rgba(238,241,245,.5);transform:translateY(-50%);pointer-events:none;z-index:2}',
       '.qtp-tip{position:absolute;bottom:18px;transform:translateX(-50%);background:rgba(16,18,22,.94);border:.5px solid rgba(255,255,255,.12);border-radius:6px;padding:2px 6px;font-size:11px;color:#dfe3ea;pointer-events:none;font-variant-numeric:tabular-nums}',
       '.qtp-row{display:flex;align-items:center;gap:6px;min-width:0}',
       '.qtp-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:#e8eaed;cursor:pointer;padding:0}',
