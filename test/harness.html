@@ -36,6 +36,15 @@
         absolutePath: '/Users/zhuoru/dsh-quickTime-Player/test/sample.mp4',
       }), { status: 200, headers: { 'content-type': 'application/json' } }))
     }
+    if (url.indexOf('/quicktime/version') === 0) {
+      // answer late enough that the spinner can be observed
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          resolve(new Response(JSON.stringify({ installed: '0.1.5', latest: '0.1.6', error: null }),
+            { status: 200, headers: { 'content-type': 'application/json' } }))
+        }, 250)
+      })
+    }
     if (url.indexOf('/quicktime/capabilities') === 0) {
       return Promise.resolve(new Response(JSON.stringify({ ffmpeg: { available: true, path: '/usr/bin/ffmpeg', version: 'test' } }),
         { status: 200, headers: { 'content-type': 'application/json' } }))

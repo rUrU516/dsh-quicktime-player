@@ -56,8 +56,13 @@ test/               smoke (render) and browser (real Chromium via CDP) harnesses
   as tall as the play button.
 - **`?` button** carries an idle cyan halo (not hover-only) and respects `prefers-reduced-motion`.
 
+## Update check (manual only)
+
+- `GET <prefix>/version` reads the running package's version from its own `package.json` and asks
+  `registry.npmjs.org/dsh-quicktime-player/latest` (6 s timeout). The client shows the result in a centred dialog.
+- Deliberately manual: no background polling, no badge, no auto-install. The earlier proposal (daily check, red
+  exclamation, one-click update through `pluginManager.installBundle`) is still on the table but unbuilt.
+
 ## Open
 
-- Update checker: button left of the camera, green dot / red exclamation, once-a-day check, click to re-check
-  (agreed in discussion, not built).
 - `-movflags +faststart` for clips and an exact-frame re-encode mode: offered, not decided.

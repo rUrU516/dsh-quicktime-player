@@ -272,7 +272,7 @@ async function runMode(cdp, base, mode, options = {}) {
 
     // focus the ? button: Space must still play/pause instead of activating it
     const helpButtonFocus = await evaluate(`(() => {
-      const button = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')
+      const button = document.querySelector('[data-qtp=\"help\"]')
       if (!button) return null
       button.focus()
       return document.activeElement === button
@@ -303,6 +303,27 @@ async function runMode(cdp, base, mode, options = {}) {
       await seek(15); button.click(); await new Promise((r) => setTimeout(r, 120))
       const afterThree = Array.from(document.querySelectorAll('.qtp-mark')).map((el) => el.style.left)
       return { afterTwo, afterThree, hasBadge: document.querySelectorAll('.qtp-markBadge svg').length }
+    })()`, true)
+
+    // the update button spins while checking and answers in a dialog
+    const updateCheck = await evaluate(`(async () => {
+      const button = document.querySelector('[data-qtp="check"]')
+      if (!button) return null
+      button.click()
+      await new Promise((r) => setTimeout(r, 80))
+      const busy = button.getAttribute('data-busy')
+      await new Promise((r) => setTimeout(r, 400))
+      const dialog = document.querySelector('.qtp-dialog')
+      const text = dialog ? dialog.textContent : ''
+      const confirm = dialog ? dialog.querySelector('.qtp-dialogBtn') : null
+      if (confirm) confirm.click()
+      await new Promise((r) => setTimeout(r, 200))
+      return {
+        busy,
+        text,
+        closed: document.querySelector('.qtp-dialog') === null,
+        leftOfCopy: button.getBoundingClientRect().right <= document.querySelector('.qtp-copyBtn').getBoundingClientRect().left + 1,
+      }
     })()`, true)
 
     // hovering the scissors reveals save + clear; both act on the marks
@@ -336,7 +357,7 @@ async function runMode(cdp, base, mode, options = {}) {
     // the frame-copy button sits left of the "?" and yields a PNG
     const copyButton = await evaluate(`(() => {
       const copy = document.querySelector('.qtp-copyBtn')
-      const help = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')
+      const help = document.querySelector('[data-qtp=\"help\"]')
       if (!copy || !help) return null
       const c = copy.getBoundingClientRect()
       const h = help.getBoundingClientRect()
@@ -357,18 +378,18 @@ async function runMode(cdp, base, mode, options = {}) {
     })()`)
     await sleep(300)
     const copied = await evaluate(`(() => (window.__copied || []).slice(-1)[0] || null)()`)
-    const halo = await evaluate(`(() => getComputedStyle(document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')).boxShadow)()`)
+    const halo = await evaluate(`(() => getComputedStyle(document.querySelector('[data-qtp=\"help\"]')).boxShadow)()`)
 
     // the "?" button opens a layer that covers the whole stage; a second click closes it
     const helpClosedBefore = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
-    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)'); if (b) b.click(); return true })()`)
+    await evaluate(`(() => { const b = document.querySelector('[data-qtp=\"help\"]'); if (b) b.click(); return true })()`)
     await sleep(200)
     const helpOpen = await evaluate(`(() => {
       const layer = document.querySelector('.qtp-helpLayer')
       if (!layer) return null
       const l = layer.getBoundingClientRect()
       const pane = document.querySelector('.qtp-pane').getBoundingClientRect()
-      const button = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)')
+      const button = document.querySelector('[data-qtp=\"help\"]')
       const buttonBox = button ? button.getBoundingClientRect() : null
       return {
         covers: Math.abs(l.top - pane.top) < 2 && Math.abs(l.height - pane.height) < 2,
@@ -376,7 +397,7 @@ async function runMode(cdp, base, mode, options = {}) {
         buttonOnTop: button ? Number(getComputedStyle(button).zIndex) > Number(getComputedStyle(layer).zIndex) : false,
         buttonInLayer: buttonBox ? buttonBox.top >= l.top && buttonBox.top <= l.bottom : false,
         text: layer.textContent,
-        glyph: (document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)') || {}).textContent || '',
+        glyph: (document.querySelector('[data-qtp=\"help\"]') || {}).textContent || '',
       }
     })()`)
     // a real click in the middle of the layer must reach the video underneath
@@ -389,13 +410,14 @@ async function runMode(cdp, base, mode, options = {}) {
     }
     const pausedAfterThrough = await evaluate(`(() => { const v = document.querySelector('video'); return v ? v.paused : null })()`)
 
-    await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn:not(.qtp-copyBtn)'); if (b) b.click(); return true })()`)
+    await evaluate(`(() => { const b = document.querySelector('[data-qtp=\"help\"]'); if (b) b.click(); return true })()`)
     await sleep(200)
     const helpClosedAfter = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
 
     interactions = {
       copyRects: copyButton.value ? copyButton.value.rects : null,
       clipMarks: marks.value,
+      updateCheck: updateCheck.value,
       clipHover: clipHover.value,
       copyLeftOfHelp: copyButton.value ? copyButton.value.leftOfHelp : null,
       copySameRow: copyButton.value ? copyButton.value.sameRow : null,
@@ -514,6 +536,14 @@ async function runMode(cdp, base, mode, options = {}) {
     if (i.helpClickThrough !== true) bad.push('help: the layer is not click-through')
     if (i.clickThroughWorked !== true) bad.push('help: a click on the layer did not reach the player')
     if (i.helpClosedAfter !== true) bad.push('help: the ? button did not close the layer')
+    const uc = i.updateCheck
+    if (!uc) bad.push('update: the check button is missing')
+    else {
+      if (uc.busy !== 'true') bad.push('update: the button did not enter its busy state')
+      if (!uc.text || !uc.text.includes('0.1.6')) bad.push(`update: unexpected dialog copy (${uc.text})`)
+      if (!uc.closed) bad.push('update: the dialog did not close')
+      if (!uc.leftOfCopy) bad.push('update: the button is not left of the camera button')
+    }
     if (!i.helpText || !i.helpText.includes('剪辑切片')) bad.push('help: the guide lost its clip row')
     if (!i.helpText || !i.helpText.includes('滚轮')) bad.push('help: the guide does not mention wheel zoom')
     const heights = (report.tab.snapshot || {}).transportHeights

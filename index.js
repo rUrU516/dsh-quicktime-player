@@ -26,7 +26,7 @@
  *   maxBytes      number   4 GiB             refuse larger files with 413
  *   extraRoots    string[] []                extra path roots allowed besides the session cwd
  */
-import { createReadStream } from 'node:fs'
+import { createReadStream, readFileSync } from 'node:fs'
 import { execFileSync, spawn } from 'node:child_process'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -433,6 +433,33 @@ export function apply(ctx, rawConfig) {
     sendText(res, 404, 'no icon')
   }
 
+  /** Our own version, read from the package that is running right now. */
+  const installedVersion = (() => {
+    try {
+      return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version ?? null
+    } catch {
+      return null
+    }
+  })()
+
+  /** `GET <prefix>/version` — manual update check against the public registry. */
+  const handleVersion = async (req, res) => {
+    let latest = null
+    let error = null
+    try {
+      const response = await fetch('https://registry.npmjs.org/dsh-quicktime-player/latest', {
+        headers: { accept: 'application/json' },
+        signal: AbortSignal.timeout(6000),
+      })
+      if (!response.ok) throw new Error('registry answered ' + String(response.status))
+      const info = await response.json()
+      if (typeof info.version === 'string') latest = info.version
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
+    }
+    sendJson(res, 200, { installed: installedVersion, latest, error })
+  }
+
   /** `GET <prefix>/capabilities` — what this Host can actually do. */
   const handleCapabilities = async (req, res) => {
     const ffmpeg = findFfmpeg()
@@ -529,6 +556,10 @@ export function apply(ctx, rawConfig) {
             return
           }
           await handleDiag(req, res)
+          return
+        }
+        if (pathname === `${config.routePrefix}/version`) {
+          await handleVersion(req, res)
           return
         }
         if (pathname === `${config.routePrefix}/capabilities`) {
