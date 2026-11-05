@@ -50,7 +50,8 @@ window.__ModuleLoader__.load({
       { key: 'mute', side: 'right', label: '\u97f3\u91cf' },
       { key: 'pip', side: 'right', label: '\u753b\u4e2d\u753b' },
       { key: 'fs', side: 'right', label: '\u5168\u5c4f', hint: '\u53cc\u51fb\u753b\u9762' },
-      { key: 'help', side: 'top', label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
+      { key: 'copy', side: 'top', indent: 50, label: '\u590d\u5236\u5f53\u524d\u5e27', hint: 'PNG' },
+      { key: 'help', side: 'top', indent: 12, label: '\u518d\u70b9\u4e00\u6b21\u6536\u8d77' },
     ]
 
     /**
@@ -1212,8 +1213,9 @@ window.__ModuleLoader__.load({
           // Top cluster: pinned under the corner buttons, stacked downwards.
           var topStart = 42 + 30 + 12
           topItems.forEach(function (item, index) {
+            var inset = typeof item.spec.indent === 'number' ? item.spec.indent : 12
             item.capsule = {
-              left: Math.max(12, rect.width - 12 - capWidth),
+              left: Math.max(12, rect.width - inset - capWidth),
               top: topStart + index * (capHeight + gap),
               width: capWidth,
               height: capHeight,
