@@ -1132,7 +1132,7 @@ window.__ModuleLoader__.load({
           var rect = pane.getBoundingClientRect()
           var capWidth = Math.max(96, Math.min(178, Math.round(rect.width * 0.46)))
           var capHeight = 28
-          var gap = 8
+          var gap = 10
           var barSpace = 86
           var items = []
           HELP_CALLOUTS.forEach(function (spec) {
@@ -1148,35 +1148,35 @@ window.__ModuleLoader__.load({
           var leftItems = items.filter(function (item) { return item.spec.side === 'left' })
           var rightItems = items.filter(function (item) { return item.spec.side === 'right' })
           var topItems = items.filter(function (item) { return item.spec.side === 'top' })
-          var stack = function (list, left) {
+          var clamp = function (value, min, max) { return Math.min(Math.max(value, min), max) }
+          // Cards sit centred over the control they describe, stacked upwards so
+          // they never collide; each arrow is a straight vertical drop.
+          var stack = function (list, rowOffset) {
             list.forEach(function (item, index) {
+              var left = clamp(item.anchorX - capWidth / 2, 12, Math.max(12, rect.width - 12 - capWidth))
               item.capsule = {
                 left: left,
-                top: rect.height - barSpace - capHeight - index * (capHeight + gap),
+                top: rect.height - barSpace - capHeight - (index + rowOffset) * (capHeight + gap),
                 width: capWidth,
                 height: capHeight,
               }
+              var lineX = clamp(item.anchorX, left + 12, left + capWidth - 12)
+              item.path = 'M ' + lineX + ' ' + (item.capsule.top + capHeight) +
+                ' L ' + lineX + ' ' + (item.anchorY - 6)
             })
           }
-          stack(leftItems, 12)
-          stack(rightItems, Math.max(12, rect.width - 12 - capWidth))
+          // Interleave the two clusters on alternate rows so cards never touch.
+          stack(leftItems, 0)
+          stack(rightItems, 1)
           topItems.forEach(function (item) {
             item.capsule = {
-              left: Math.max(12, rect.width - 12 - capWidth - 38),
-              top: 46,
+              left: Math.max(12, rect.width - 12 - capWidth),
+              top: 78,
               width: capWidth,
               height: capHeight,
             }
-          })
-          items.forEach(function (item) {
-            var capsule = item.capsule
-            var fromX = item.spec.side === 'right' ? capsule.left : capsule.left + capsule.width
-            var fromY = capsule.top + capsule.height / 2
-            var toX = item.anchorX
-            var toY = item.anchorY - 6
-            var midY = fromY + (toY - fromY) * 0.55
-            item.path = 'M ' + fromX + ' ' + fromY +
-              ' C ' + fromX + ' ' + midY + ', ' + toX + ' ' + midY + ', ' + toX + ' ' + toY
+            var lineX = clamp(item.anchorX, item.capsule.left + 12, item.capsule.left + capWidth - 12)
+            item.path = 'M ' + lineX + ' ' + item.capsule.top + ' L ' + lineX + ' ' + (item.anchorY + 16)
           })
           setAnnotations({ width: rect.width, height: rect.height, items: items })
         }
