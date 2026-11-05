@@ -185,6 +185,12 @@ async function runMode(cdp, base, mode, options = {}) {
       duration: video ? video.duration : null,
       seekable: video && video.seekable.length ? [video.seekable.start(0), video.seekable.end(video.seekable.length - 1)] : [],
       buttons: document.querySelectorAll('.qtp-btn').length,
+      clipButton: (() => {
+        const clip = document.querySelector('[data-qtp="clip"]')
+        const rate = document.querySelector('[data-qtp="rate"]')
+        if (!clip || !rate) return null
+        return { leftOfRate: clip.getBoundingClientRect().right <= rate.getBoundingClientRect().left + 1, height: Math.round(clip.getBoundingClientRect().height) }
+      })(),
       transportHeights: (() => {
         const play = document.querySelector('[data-qtp="play"]')
         const clock = document.querySelector('[data-qtp="clock"]')
@@ -281,6 +287,24 @@ async function runMode(cdp, base, mode, options = {}) {
       }
     })()`)
 
+    // scissors: every click drops a marker, only the last two survive
+    const marks = await evaluate(`(async () => {
+      const video = document.querySelector('video')
+      const button = document.querySelector('[data-qtp="clip"]')
+      if (!video || !button) return null
+      const seek = (t) => new Promise((resolve) => {
+        video.currentTime = t
+        video.addEventListener('seeked', resolve, { once: true })
+        setTimeout(resolve, 500)
+      })
+      await seek(5); button.click(); await new Promise((r) => setTimeout(r, 120))
+      await seek(4); button.click(); await new Promise((r) => setTimeout(r, 120))
+      const afterTwo = Array.from(document.querySelectorAll('.qtp-mark')).map((el) => el.style.left)
+      await seek(15); button.click(); await new Promise((r) => setTimeout(r, 120))
+      const afterThree = Array.from(document.querySelectorAll('.qtp-mark')).map((el) => el.style.left)
+      return { afterTwo, afterThree, hasBadge: document.querySelectorAll('.qtp-markBadge svg').length }
+    })()`, true)
+
     // the frame-copy button sits left of the "?" and yields a PNG
     const copyButton = await evaluate(`(() => {
       const copy = document.querySelector('.qtp-copyBtn')
@@ -343,6 +367,7 @@ async function runMode(cdp, base, mode, options = {}) {
 
     interactions = {
       copyRects: copyButton.value ? copyButton.value.rects : null,
+      clipMarks: marks.value,
       copyLeftOfHelp: copyButton.value ? copyButton.value.leftOfHelp : null,
       copySameRow: copyButton.value ? copyButton.value.sameRow : null,
       copiedFrame: copied.value,
