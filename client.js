@@ -739,10 +739,11 @@ window.__ModuleLoader__.load({
             var ratio = next / previous
             var anchorX = cursorX - centerX
             var anchorY = cursorY - centerY
-            return {
-              x: anchorX + ratio * (previousPan.x - anchorX),
-              y: anchorY + ratio * (previousPan.y - anchorY),
-            }
+            return clampPan(
+              anchorX + ratio * (previousPan.x - anchorX),
+              anchorY + ratio * (previousPan.y - anchorY),
+              next,
+            )
           })
           return next
         })
@@ -760,6 +761,21 @@ window.__ModuleLoader__.load({
         stage.addEventListener('wheel', onWheel, { passive: false })
         return function () { stage.removeEventListener('wheel', onWheel) }
       }, [applyZoom])
+
+      // Keep the picture inside the stage: panning stops at the point where the
+      // scaled video would expose empty space.
+      var clampPan = function (x, y, zoomValue) {
+        var stage = stageRef.current
+        var video = videoRef.current
+        if (!stage || !video || !video.clientWidth || !video.clientHeight) return { x: x, y: y }
+        var rect = stage.getBoundingClientRect()
+        var maxX = Math.max(0, (video.clientWidth * zoomValue - rect.width) / 2)
+        var maxY = Math.max(0, (video.clientHeight * zoomValue - rect.height) / 2)
+        return {
+          x: Math.min(maxX, Math.max(-maxX, x)),
+          y: Math.min(maxY, Math.max(-maxY, y)),
+        }
+      }
 
       var dragRef = useRef(null)
       /** Pointer events inside the transport bar / zoom HUD must not reach the stage gesture layer. */
@@ -781,7 +797,11 @@ window.__ModuleLoader__.load({
           moved: false,
           zoomed: zoom > 1,
         }
-        stage.setPointerCapture(event.pointerId)
+        try {
+          stage.setPointerCapture(event.pointerId)
+        } catch {
+          // synthetic pointers and non-active ids cannot be captured
+        }
         wake()
       }, [pan.x, pan.y, zoom, wake])
 
@@ -795,9 +815,9 @@ window.__ModuleLoader__.load({
           if (drag.zoomed) setPanning(true)
         }
         if (drag.moved && drag.zoomed) {
-          setPan({ x: drag.panX + dx, y: drag.panY + dy })
+          setPan(clampPan(drag.panX + dx, drag.panY + dy, zoom))
         }
-      }, [])
+      }, [zoom])
 
       var onPointerUp = useCallback(function (event) {
         var drag = dragRef.current

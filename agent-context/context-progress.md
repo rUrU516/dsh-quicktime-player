@@ -82,6 +82,12 @@ Copy frame, clip export, the row-based guide, the larger controls and the manual
 - Restore only when the duration still matches within a second; `t` at the end of a non-looping file drops the record.
   Zoom/pan and clip marks are deliberately not restored.
 
+## Pan bounds
+
+- `clampPan(x, y, zoom)` limits the translation so the scaled video still covers the stage: `maxX = (clientWidth*zoom -
+  stageWidth) / 2`, same for Y. Wired into the drag handler (deps include `zoom`, otherwise it clamps against 1× and
+  snaps to zero) and into `applyZoom` so a wheel gesture cannot escape either.
+
 ## Open
 
 - `-movflags +faststart` for clips and an exact-frame re-encode mode: offered, not decided.

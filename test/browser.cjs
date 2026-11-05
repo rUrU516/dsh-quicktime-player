@@ -442,6 +442,34 @@ async function runMode(cdp, base, mode, options = {}) {
       return v ? { time: Math.round(v.currentTime * 10) / 10, rate: v.playbackRate } : null
     })()`)
 
+    // panning must stop at the video's edge, never drag the picture away
+    const panClamp = await evaluate(`(async () => {
+      const stage = document.querySelector('.qtp-stage')
+      const rect = stage.getBoundingClientRect()
+      stage.dispatchEvent(new WheelEvent('wheel', { deltaY: -420, clientX: rect.x + 100, clientY: rect.y + 100, bubbles: true, cancelable: true }))
+      await new Promise((r) => setTimeout(r, 250))
+      const cx = rect.x + rect.width / 2
+      const cy = rect.y + rect.height / 2
+      const send = (type, x, y, buttons) => stage.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', isPrimary: true,
+        button: 0, buttons, clientX: x, clientY: y,
+      }))
+      send('pointerdown', cx, cy, 1)
+      send('pointermove', cx - 900, cy - 700, 1)
+      send('pointerup', cx - 900, cy - 700, 0)
+      await new Promise((r) => setTimeout(r, 350))
+      const canvas = document.querySelector('.qtp-canvas')
+      const video = document.querySelector('video')
+      const matrix = new DOMMatrix(getComputedStyle(canvas).transform)
+      return {
+        zoom: Math.round(matrix.a * 100) / 100,
+        x: Math.round(matrix.e),
+        y: Math.round(matrix.f),
+        maxX: Math.round(Math.max(0, (video.clientWidth * matrix.a - rect.width) / 2)),
+        maxY: Math.round(Math.max(0, (video.clientHeight * matrix.a - rect.height) / 2)),
+      }
+    })()`, true)
+
     // the guide's feedback link asks the Host to open the repo
     const feedbackCall = await (async () => {
       await evaluate(`(() => { const l = document.querySelector('[data-qtp="help"]'); if (l) l.click(); return true })()`)
@@ -461,6 +489,7 @@ async function runMode(cdp, base, mode, options = {}) {
       copyRects: copyButton.value ? copyButton.value.rects : null,
       clipMarks: marks.value,
       updateCheck: updateCheck.value,
+      panClamp: panClamp.value,
       storedResume: storedResume.value,
       restored: restored.value,
       clipHover: clipHover.value,
@@ -620,6 +649,14 @@ async function runMode(cdp, base, mode, options = {}) {
     else {
       if (Math.abs(rv.time - 8) > 0.7) bad.push(`resume: reload did not land on the saved position (${rv.time})`)
       if (Math.abs(rv.rate - 1.6) > 0.05) bad.push(`resume: playback rate was not restored (${rv.rate})`)
+    }
+    const pc = i.panClamp
+    if (!pc) bad.push('pan: the clamp probe did not run')
+    else {
+      if (pc.zoom <= 1.05) bad.push(`pan: the wheel did not zoom (${pc.zoom})`)
+      if (Math.abs(pc.x) > pc.maxX + 1) bad.push(`pan: x escaped the frame (${pc.x} vs limit ${pc.maxX})`)
+      if (Math.abs(pc.y) > pc.maxY + 1) bad.push(`pan: y escaped the frame (${pc.y} vs limit ${pc.maxY})`)
+      if (Math.abs(pc.x) < pc.maxX - 2) bad.push(`pan: the drag did not reach the edge (${pc.x} vs limit ${pc.maxX})`)
     }
     const rem = report.remote
     if (!rem) bad.push('remote: the open/reveal probe did not run')

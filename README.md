@@ -15,7 +15,8 @@ capture and clip export.
 - **Seek works on Desktop too.** The Electron shell serves the page from `dsh-app://`, where Chromium cannot seek a
   `<video>` response; the player therefore streams from a tokenized `127.0.0.1` port and falls back to the
   same-origin route when that port is unavailable.
-- **Zoom and pan.** Wheel zooms around the pointer (1× – 8×), drag pans while zoomed, double-click toggles fullscreen.
+- **Zoom and pan.** Wheel zooms around the pointer (1× – 8×), drag pans while zoomed, and panning stops at the
+  video's edge — the picture can never be dragged out of the frame. Double-click toggles fullscreen.
 - **Own controls.** Play/pause, time ⇄ frame number, speed slider (0.2× – 5×, 0.2 steps), loop, vertical volume
   popup, mute, picture-in-picture, fullscreen. The chrome fades out while the mouse is idle.
 - **Frame stepping.** <kbd>←</kbd> / <kbd>→</kbd> step one frame; the frame rate is measured from delivered frames.
