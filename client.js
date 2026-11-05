@@ -89,6 +89,36 @@ window.__ModuleLoader__.load({
     var ZOOM_MIN = 1
     var ZOOM_MAX = 8
 
+    /** Kept so components can reach optional Host services without injecting them. */
+    var pluginCtx = null
+
+    /** The desktop's "open / reveal this file" seam, when the composition has one. */
+    function workspaceRemote() {
+      try {
+        var remote = pluginCtx && typeof pluginCtx.get === 'function' ? pluginCtx.get('remote') : null
+        if (!remote || !remote.session || typeof remote.session.openWorkspacePath !== 'function') return null
+        return remote.session
+      } catch {
+        return null
+      }
+    }
+
+    /** Export glyph: an arrow leaving a tray. */
+    function IconOpenExternal() {
+      return h('svg', { viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
+        h('path', { key: 'a', d: 'M9.2 3.2h3.6v3.6', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        h('path', { key: 'b', d: 'M12.6 3.4 L7.4 8.6', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' }),
+        h('path', { key: 'c', d: 'M11.2 9.8v2.2a.9.9 0 0 1-.9.9H4.1a.9.9 0 0 1-.9-.9V5.9a.9.9 0 0 1 .9-.9h2.3', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' }),
+      ])
+    }
+
+    /** Reveal glyph: a folder. */
+    function IconReveal() {
+      return h('svg', { viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', xmlns: 'http://www.w3.org/2000/svg' }, [
+        h('path', { key: 'a', d: 'M2.6 5.2a1 1 0 0 1 1-1h2.5l1.2 1.4h4.1a1 1 0 0 1 1 1v4.6a1 1 0 0 1-1 1H3.6a1 1 0 0 1-1-1z', stroke: 'currentColor', strokeWidth: 1.3, strokeLinejoin: 'round' }),
+      ])
+    }
+
     function routePrefix() {
       var injected = typeof window !== 'undefined' ? window.__DSH_QUICKTIME_PLAYER__ : undefined
       return injected && typeof injected.routePrefix === 'string' ? injected.routePrefix : '/quicktime'
@@ -1397,8 +1427,45 @@ window.__ModuleLoader__.load({
         observer.observe(el)
         return function () { observer.disconnect() }
       }, [])
+      var [canOpen, setCanOpen] = useState(false)
+      useEffect(function () {
+        var remote = workspaceRemote()
+        if (!remote || typeof remote.canOpenWorkspacePath !== 'function') return
+        var alive = true
+        remote.canOpenWorkspacePath().then(function (result) {
+          if (alive && result && result.ok && result.value === true) setCanOpen(true)
+        }).catch(function () {})
+        return function () { alive = false }
+      }, [])
+
+      var handOff = function (action) {
+        var remote = workspaceRemote()
+        if (!remote || !props.absolutePath) return
+        var request = action === 'reveal' ? { path: props.absolutePath, action: 'reveal' } : { path: props.absolutePath }
+        remote.openWorkspacePath(request).then(function (result) {
+          if (!result || !result.ok) props.onToast('打开失败')
+        }).catch(function () { props.onToast('打开失败') })
+      }
+
+      var extra = []
+      if (canOpen && props.absolutePath) {
+        extra.push(h('button', {
+          key: 'open',
+          className: 'qtp-headerBtn',
+          title: '用默认应用打开',
+          onClick: function (event) { handOff('open'); event.currentTarget.blur() },
+        }, h(IconOpenExternal)))
+        extra.push(h('button', {
+          key: 'reveal',
+          className: 'qtp-headerBtn',
+          title: '在文件管理器中显示',
+          onClick: function (event) { handOff('reveal'); event.currentTarget.blur() },
+        }, h(IconReveal)))
+      }
+
       return h('div', { className: 'qtp-header' }, [
         h('span', { key: 'p', ref: pathRef, className: 'qtp-headerPath', title: props.path || '' }, shortenPath(props.path || '', budget)),
+      ].concat(extra).concat([
         h('button', {
           key: 'r',
           className: 'qtp-headerBtn',
@@ -1408,7 +1475,7 @@ window.__ModuleLoader__.load({
           },
           title: '重新加载',
         }, '\u21bb'),
-      ])
+      ]))
     }
 
     /** Drop / pick a local video when the tab carries no file address (the guide entry). */
@@ -1696,6 +1763,8 @@ window.__ModuleLoader__.load({
         h(PaneHeader, {
           key: 'h',
           path: headerPath,
+          absolutePath: resolved || '',
+          onToast: showToast,
           onReload: function () {
             if (local) {
               URL.revokeObjectURL(local.url)
@@ -1711,6 +1780,7 @@ window.__ModuleLoader__.load({
 
     // ── plugin body ────────────────────────────────────────────────────────
     function apply(ctx) {
+      pluginCtx = ctx
       ensureCss()
       postDiag({ kind: 'client-boot', version: '0.1.0', release: (window.__DSH_BOOT__ && window.__DSH_BOOT__.release) || null })
       var mark = function (name, error) {

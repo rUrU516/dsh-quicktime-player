@@ -410,14 +410,14 @@ export function apply(ctx) {
     sendText(res, 404, 'no icon')
   }
 
-  /** Our own version, read from the package that is running right now. */
-  const installedVersion = (() => {
+  /** Our own version, read per request: caching it made a bumped package look stale. */
+  const installedVersion = () => {
     try {
       return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version ?? null
     } catch {
       return null
     }
-  })()
+  }
 
   /** `GET <prefix>/version` — manual update check against the public registry. */
   const handleVersion = async (req, res) => {
@@ -434,7 +434,7 @@ export function apply(ctx) {
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
     }
-    sendJson(res, 200, { installed: installedVersion, latest, error })
+    sendJson(res, 200, { installed: installedVersion(), latest, error })
   }
 
   /** `GET <prefix>/capabilities` — what this Host can actually do. */

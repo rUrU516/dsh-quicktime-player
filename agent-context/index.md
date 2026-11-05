@@ -9,8 +9,9 @@ matches your task.
 | `context-research.md` | Why the design is what it is: tab-type auction, transport constraints, the Electron seek problem | before changing the registration or the streaming route |
 | `context-progress.md` | What ships today, what was verified and how, where the seams are | at the start of any session |
 | `context-decisions.md` | Questions that were asked and answered, so they are not re-litigated | when a design question comes up again |
+| `context-backlog.md` | Ideas asked for but deliberately not built, with the open questions attached | before promising a feature that sounds familiar |
 
-## Current shape (0.1.2)
+## Current shape (0.3.0)
 
 - The plugin registers **its own right-sidebar tab type** and claims video addresses with per-suffix globs, so every
   video opened through DSH lands in it. No dependency on any other sidebar plugin.

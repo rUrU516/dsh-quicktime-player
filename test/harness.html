@@ -15,6 +15,18 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
 <script>
+  // ── optional stand-in for the desktop "open / reveal" seam ───────────────
+  if (new URLSearchParams(location.search).get('remote') === '1') {
+    window.__openCalls = []
+    window.__fakeRemote = {
+      canOpenWorkspacePath: function () { return Promise.resolve({ ok: true, value: true }) },
+      openWorkspacePath: function (request) {
+        window.__openCalls.push(request)
+        return Promise.resolve({ ok: true })
+      },
+    }
+  }
+
   // ── stand in for the DSH module loader ────────────────────────────────────
   window.__captured = null
   window.__ModuleLoader__ = {
@@ -111,7 +123,10 @@
           inject: function (name, factory) { return factory() },
           register: function (options, component) { captured.slots.push({ options: options, component: component }); return function () {} },
         },
-        get: function () { return undefined },
+        get: function (name) {
+          if (name === 'remote' && window.__fakeRemote) return { session: window.__fakeRemote }
+          return undefined
+        },
         inject: function (deps, callback) {
           callback({
             effect: quietEffect,

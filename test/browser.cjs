@@ -527,6 +527,33 @@ async function runMode(cdp, base, mode, options = {}) {
     report.tab = await runMode(cdp, base, 'tab')
     report.body = await runMode(cdp, base, 'body')
     report.empty = await runMode(cdp, base, 'empty', { feedLocal: true })
+  report.remote = await (async () => {
+    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' })
+    const attached = await cdp.send('Target.attachToTarget', { targetId, flatten: true })
+    const sessionId = attached.sessionId
+    const evaluate = (expression, awaitPromise = false) => cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise }, sessionId)
+    await cdp.send('Page.enable', {}, sessionId)
+    await cdp.send('Page.navigate', { url: `${base}?mode=tab&remote=1` }, sessionId)
+    for (let i = 0; i < 60; i += 1) {
+      const probe = await evaluate(`!!document.querySelector('video')`)
+      if (probe.result && probe.result.value === true) break
+      await sleep(250)
+    }
+    await sleep(400)
+    const result = await evaluate(`(async () => {
+      const buttons = Array.from(document.querySelectorAll('.qtp-headerBtn'))
+      const titles = buttons.map((b) => b.getAttribute('title'))
+      const open = buttons.find((b) => b.title.includes('默认应用'))
+      const reveal = buttons.find((b) => b.title.includes('文件管理器'))
+      if (open) open.click()
+      await new Promise((r) => setTimeout(r, 150))
+      if (reveal) reveal.click()
+      await new Promise((r) => setTimeout(r, 150))
+      return { titles, calls: window.__openCalls || [] }
+    })()`, true)
+    await cdp.send('Target.closeTarget', { targetId })
+    return result.result ? result.result.value : null
+  })()
   } finally {
     cdp.close()
     child.kill('SIGKILL')
@@ -577,6 +604,16 @@ async function runMode(cdp, base, mode, options = {}) {
     else {
       if (Math.abs(rv.time - 8) > 0.7) bad.push(`resume: reload did not land on the saved position (${rv.time})`)
       if (Math.abs(rv.rate - 1.6) > 0.05) bad.push(`resume: playback rate was not restored (${rv.rate})`)
+    }
+    const rem = report.remote
+    if (!rem) bad.push('remote: the open/reveal probe did not run')
+    else {
+      if (!rem.titles || !rem.titles.some((t) => t && t.includes('默认应用'))) bad.push('remote: no open-with-default button')
+      if (!rem.titles || !rem.titles.some((t) => t && t.includes('文件管理器'))) bad.push('remote: no reveal button')
+      const openCall = (rem.calls || []).find((c) => c.path && !c.action)
+      const revealCall = (rem.calls || []).find((c) => c.action === 'reveal')
+      if (!openCall || !openCall.path.endsWith('/test/sample.mp4')) bad.push(`remote: open did not carry the absolute path (${JSON.stringify(openCall)})`)
+      if (!revealCall) bad.push('remote: reveal was not called with action=reveal')
     }
     const uc = i.updateCheck
     if (!uc) bad.push('update: the check button is missing')
