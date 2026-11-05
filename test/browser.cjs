@@ -289,12 +289,23 @@ async function runMode(cdp, base, mode, options = {}) {
       const buttonBox = button ? button.getBoundingClientRect() : null
       return {
         covers: Math.abs(l.top - pane.top) < 2 && Math.abs(l.height - pane.height) < 2,
+        clickThrough: getComputedStyle(layer).pointerEvents === 'none',
         buttonOnTop: button ? Number(getComputedStyle(button).zIndex) > Number(getComputedStyle(layer).zIndex) : false,
         buttonInLayer: buttonBox ? buttonBox.top >= l.top && buttonBox.top <= l.bottom : false,
         text: layer.textContent,
         glyph: (document.querySelector('.qtp-helpBtn') || {}).textContent || '',
       }
     })()`)
+    // a real click in the middle of the layer must reach the video underneath
+    const pausedBeforeThrough = await evaluate(`(() => { const v = document.querySelector('video'); return v ? v.paused : null })()`)
+    const centre = await evaluate(`(() => { const r = document.querySelector('.qtp-stage').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`)
+    if (centre.value) {
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: centre.value.x, y: centre.value.y, button: 'left', clickCount: 1 }, sessionId)
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: centre.value.x, y: centre.value.y, button: 'left', clickCount: 1 }, sessionId)
+      await sleep(300)
+    }
+    const pausedAfterThrough = await evaluate(`(() => { const v = document.querySelector('video'); return v ? v.paused : null })()`)
+
     await evaluate(`(() => { const b = document.querySelector('.qtp-helpBtn'); if (b) b.click(); return true })()`)
     await sleep(200)
     const helpClosedAfter = await evaluate(`(() => document.querySelector('.qtp-helpLayer') === null)()`)
@@ -306,6 +317,8 @@ async function runMode(cdp, base, mode, options = {}) {
       pausedBeforeSpace: pausedBeforeSpace.value,
       helpCoversStage: helpOpen.value ? helpOpen.value.covers : null,
       helpButtonOnTop: helpOpen.value ? helpOpen.value.buttonOnTop : null,
+      helpClickThrough: helpOpen.value ? helpOpen.value.clickThrough : null,
+      clickThroughWorked: pausedBeforeThrough.value !== pausedAfterThrough.value,
       helpText: helpOpen.value ? helpOpen.value.text : null,
       helpGlyph: helpOpen.value ? helpOpen.value.glyph : null,
       helpClosedAfter: helpClosedAfter.value,
