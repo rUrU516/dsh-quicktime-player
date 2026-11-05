@@ -91,16 +91,23 @@ window.__ModuleLoader__.load({
 
     /** Kept so components can reach optional Host services without injecting them. */
     var pluginCtx = null
+    /** Filled by an inject fork: the Remote namespace is not reachable through ctx.get alone. */
+    var remoteBridge = null
 
     /** The desktop's "open / reveal this file" seam, when the composition has one. */
     function workspaceRemote() {
+      var candidates = []
+      if (remoteBridge !== null) candidates.push(remoteBridge)
       try {
-        var remote = pluginCtx && typeof pluginCtx.get === 'function' ? pluginCtx.get('remote') : null
-        if (!remote || !remote.session || typeof remote.session.openWorkspacePath !== 'function') return null
-        return remote.session
+        if (pluginCtx && typeof pluginCtx.get === 'function') candidates.push(pluginCtx.get('remote'))
       } catch {
-        return null
+        // the service is not ours to read without an inject fork
       }
+      for (var index = 0; index < candidates.length; index += 1) {
+        var remote = candidates[index]
+        if (remote && remote.session && typeof remote.session.openWorkspacePath === 'function') return remote.session
+      }
+      return null
     }
 
     /** Export glyph: an arrow leaving a tray. */
@@ -1429,12 +1436,31 @@ window.__ModuleLoader__.load({
       }, [])
       var [canOpen, setCanOpen] = useState(false)
       useEffect(function () {
-        var remote = workspaceRemote()
-        if (!remote || typeof remote.canOpenWorkspacePath !== 'function') return
         var alive = true
-        remote.canOpenWorkspacePath().then(function (result) {
-          if (alive && result && result.ok && result.value === true) setCanOpen(true)
-        }).catch(function () {})
+        var attempts = 0
+        var ask = function () {
+          if (!alive) return
+          var remote = workspaceRemote()
+          if (remote && typeof remote.canOpenWorkspacePath === 'function') {
+            remote.canOpenWorkspacePath().then(function (result) {
+              if (!alive) return
+              postDiag({ kind: 'can-open', ok: Boolean(result && result.ok), value: result ? result.value : null })
+              if (result && result.ok) {
+                if (result.value === true) setCanOpen(true)
+                return
+              }
+              retry()
+            }).catch(retry)
+            return
+          }
+          retry()
+        }
+        var retry = function () {
+          if (!alive || attempts >= 20) return
+          attempts += 1
+          setTimeout(ask, 500)
+        }
+        ask()
         return function () { alive = false }
       }, [])
 
@@ -1781,6 +1807,22 @@ window.__ModuleLoader__.load({
     // ── plugin body ────────────────────────────────────────────────────────
     function apply(ctx) {
       pluginCtx = ctx
+      try {
+        // A fork, not a hard dependency: compositions without Remote keep working.
+        if (typeof ctx.inject === 'function') {
+          ctx.inject(['remote'], function (forked) {
+            try {
+              var remote = forked && typeof forked.get === 'function' ? forked.get('remote') : null
+              if (remote && remote.session) remoteBridge = remote
+              postDiag({ kind: 'remote-bridge', hasRemote: remote !== null && remote !== undefined, hasSession: Boolean(remote && remote.session) })
+            } catch {
+              // stay without the seam
+            }
+          })
+        }
+      } catch {
+        // stay without the seam
+      }
       ensureCss()
       postDiag({ kind: 'client-boot', version: '0.1.0', release: (window.__DSH_BOOT__ && window.__DSH_BOOT__.release) || null })
       var mark = function (name, error) {
