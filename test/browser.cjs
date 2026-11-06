@@ -218,28 +218,40 @@ async function runMode(cdp, base, mode, options = {}) {
 
     // hover the volume anchor: a vertical slider must pop up
     await evaluate(`(() => {
-      const anchors = document.querySelectorAll('.qtp-anchor')
-      const volume = anchors[anchors.length - 1]
-      if (volume) volume.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
+      const mute = document.querySelector('[data-qtp="mute"]')
+      const flyout = mute ? mute.closest('.qtp-flyout') : null
+      if (flyout) flyout.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
       return true
     })()`)
-    await sleep(200)
+    await sleep(250)
     const volumePop = await evaluate(`(() => {
-      const slider = document.querySelector('.qtp-pop .qtp-vslider')
+      const mute = document.querySelector('[data-qtp="mute"]')
+      const flyout = mute ? mute.closest('.qtp-flyout') : null
+      const slider = flyout ? flyout.querySelector('.qtp-slider') : null
       if (!slider) return null
-      const style = getComputedStyle(slider)
-      return { writingMode: style.writingMode, height: Math.round(slider.getBoundingClientRect().height), width: Math.round(slider.getBoundingClientRect().width) }
+      const rect = slider.getBoundingClientRect()
+      const extra = flyout.querySelector('.qtp-flyoutExtra')
+      return {
+        horizontal: rect.width > rect.height,
+        open: flyout.getAttribute('data-open') === 'true',
+        opacity: extra ? getComputedStyle(extra).opacity : null,
+        height: Math.round(rect.height),
+        width: Math.round(rect.width),
+      }
     })()`)
 
     // hover the rate anchor and drive its slider
     await evaluate(`(() => {
-      const anchors = document.querySelectorAll('.qtp-anchor')
-      if (anchors[0]) anchors[0].dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
+      const rate = document.querySelector('[data-qtp="rate"]')
+      const flyout = rate ? rate.closest('.qtp-flyout') : null
+      if (flyout) flyout.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
       return true
     })()`)
-    await sleep(200)
+    await sleep(250)
     const rateApplied = await evaluate(`(() => {
-      const slider = document.querySelector('.qtp-pop .qtp-vslider')
+      const rateButton = document.querySelector('[data-qtp="rate"]')
+      const flyout = rateButton ? rateButton.closest('.qtp-flyout') : null
+      const slider = flyout ? flyout.querySelector('.qtp-slider') : null
       if (!slider) return null
       window.__rateSlider = { min: slider.min, max: slider.max, step: slider.step }
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
@@ -252,7 +264,9 @@ async function runMode(cdp, base, mode, options = {}) {
     // focus the rate slider on purpose: Space and the arrows must still reach
     // the player instead of being eaten by the focused control
     const sliderFocused = await evaluate(`(() => {
-      const slider = document.querySelector('.qtp-pop .qtp-vslider')
+      const rateButton = document.querySelector('[data-qtp="rate"]')
+      const flyout = rateButton ? rateButton.closest('.qtp-flyout') : null
+      const slider = flyout ? flyout.querySelector('.qtp-slider') : null
       if (!slider) return null
       slider.focus()
       return { focused: document.activeElement === slider, range: window.__rateSlider }
@@ -619,10 +633,11 @@ async function runMode(cdp, base, mode, options = {}) {
     if (i.hasFitButton) bad.push('toolbar: the fit button is still there')
     if (i.timeBefore && !i.timeBefore.includes('/')) bad.push(`clock: unexpected initial text (${i.timeBefore})`)
     if (!i.frameText || !String(i.frameText).startsWith('#')) bad.push(`clock: clicking did not switch to frames (${i.frameText})`)
-    if (!i.volumePop) bad.push('volume: no popup slider on hover')
+    if (!i.volumePop) bad.push('volume: no flyout slider on hover')
     else {
-      if (i.volumePop.writingMode !== 'vertical-lr') bad.push(`volume: slider is not vertical (${i.volumePop.writingMode})`)
-      if (i.volumePop.height <= i.volumePop.width) bad.push('volume: slider is not taller than wide')
+      if (i.volumePop.open !== true) bad.push('volume: the flyout did not open on hover')
+      if (i.volumePop.horizontal !== true) bad.push(`volume: slider is not horizontal (${i.volumePop.width}x${i.volumePop.height})`)
+      if (i.volumePop.opacity !== '1') bad.push(`volume: the flyout stayed hidden (${i.volumePop.opacity})`)
     }
     if (Math.abs((i.rateAfterSlider ?? 0) - 2.4) > 0.01) bad.push(`rate: slider did not set playbackRate (${i.rateAfterSlider})`)
     if (i.sliderFocused !== true) bad.push('keys: could not focus the rate slider for the shortcut test')
