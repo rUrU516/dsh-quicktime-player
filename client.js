@@ -169,9 +169,9 @@ window.__ModuleLoader__.load({
       '.qtp-headerPath{flex:1 1 auto;min-width:0;font-size:11px;color:var(--qtp-text-2);white-space:nowrap;overflow:hidden;text-align:left;user-select:text;-webkit-user-select:text;cursor:text}',
       '.qtp-headerBtn{flex:none;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:var(--qtp-text-2);cursor:pointer;font-size:13px;line-height:1}',
       '.qtp-headerBtn:hover{background:var(--qtp-hover)}',
-            '.qtp-helpBtn{position:absolute;right:12px;top:42px;width:30px;height:30px;border-radius:50%;border:.5px solid rgba(255,255,255,.18);background:rgba(16,18,22,.55);color:#cfd6df;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.75;transition:opacity .16s ease,background .16s ease,color .16s ease,box-shadow .2s ease;z-index:10;padding:0}',
-      '.qtp-helpBtn:hover{opacity:1;background:rgba(38,42,50,.92);color:#e8eaed}',
-      '.qtp-helpBtn[data-open=true]{opacity:1;background:rgba(38,42,50,.92);color:#e8eaed}',
+            '.qtp-helpBtn{position:absolute;right:12px;top:42px;width:30px;height:30px;border-radius:50%;border:.5px solid var(--qtp-line);background:color-mix(in srgb,var(--qtp-surface) 78%,transparent);color:var(--qtp-text-2);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.75;transition:opacity .16s ease,background .16s ease,color .16s ease,box-shadow .2s ease;z-index:10;padding:0}',
+      '.qtp-helpBtn:hover{opacity:1;background:var(--qtp-surface);color:var(--qtp-text)}',
+      '.qtp-helpBtn[data-open=true]{opacity:1;background:var(--qtp-surface);color:var(--qtp-text)}',
       // the copy button sits to its left and never carries the guide halo
       '.qtp-helpBtn.qtp-copyBtn{right:50px}',
       '.qtp-helpBtn.qtp-checkBtn{right:88px}',
@@ -214,15 +214,14 @@ window.__ModuleLoader__.load({
       // the card is the one thing in the layer that takes the mouse
       '.qtp-helpLayer>*:not(.qtp-guide){pointer-events:none}',
       '.qtp-helpLayerNote{font-size:11px;color:#c6ccd6;line-height:1.6;max-width:280px;text-shadow:0 1px 8px rgba(0,0,0,.85)}',
-      '.qtp-empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;min-height:0}',
-      '.qtp-drop{width:min(420px,100%);display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 22px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;background:rgba(255,255,255,.02);transition:border-color .15s ease,background .15s ease}',
-      '.qtp-drop[data-dragging=true]{border-color:#5b9dff;background:rgba(91,157,255,.08)}',
-      '.qtp-dropGlyph{color:#8f96a3;display:flex}',
-      '.qtp-dropTitle{font-size:13px;color:#e8eaed}',
-      '.qtp-dropHint{font-size:11px;color:#8f96a3;text-align:center;line-height:1.6;max-width:320px}',
-      '.qtp-dropBtn{margin-top:4px;height:28px;padding:0 14px;border-radius:8px;border:.5px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e8eaed;font-size:12px;cursor:pointer}',
-      '.qtp-dropBtn:hover{background:rgba(255,255,255,.12)}',
-      '.qtp-dropNote{font-size:11px;color:#6f7683;text-align:center;max-width:360px;line-height:1.6}',
+      '.qtp-empty{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:24px;min-height:0}',
+      '.qtp-drop{width:min(340px,100%);display:flex;flex-direction:column;align-items:center;gap:14px;padding:30px 24px;border:1.5px dashed var(--qtp-line);border-radius:16px;background:transparent;cursor:pointer;transition:border-color .15s ease,background .15s ease}',
+      '.qtp-drop:hover{border-color:var(--qtp-text-3)}',
+      '.qtp-drop[data-dragging=true]{border-color:var(--dsw-alias-brand-primary,#5b9dff);background:color-mix(in srgb,var(--dsw-alias-brand-primary,#5b9dff) 9%,transparent)}',
+      '.qtp-dropGlyph{color:var(--qtp-text-3);display:flex;opacity:.9}',
+      '.qtp-dropTitle{font-size:13px;color:var(--qtp-text-2)}',
+      '.qtp-dropBtn{height:28px;padding:0 14px;border-radius:999px;border:.5px solid var(--qtp-line);background:var(--qtp-hover);color:var(--qtp-text);font-size:12px;cursor:pointer}',
+      '.qtp-dropBtn:hover{filter:brightness(1.08)}',
     ].join('')
 
     var CSS_TAG = 'dsh-quicktime-player/player.css'
@@ -1511,6 +1510,7 @@ window.__ModuleLoader__.load({
           key: 'zone',
           className: 'qtp-drop',
           'data-dragging': dragging ? 'true' : 'false',
+          onClick: function () { if (inputRef.current) inputRef.current.click() },
           onDragOver: function (event) { event.preventDefault(); setDragging(true) },
           onDragLeave: function () { setDragging(false) },
           onDrop: function (event) {
@@ -1519,14 +1519,16 @@ window.__ModuleLoader__.load({
             pick(event.dataTransfer && event.dataTransfer.files)
           },
         }, [
-          h('div', { key: 'g', className: 'qtp-dropGlyph' }, h(QuickTimeGlyph, { size: 40 })),
-          h('div', { key: 't', className: 'qtp-dropTitle' }, '把视频拖进来'),
-          h('div', { key: 'd', className: 'qtp-dropHint' }, '也可以从左侧文件树点一个视频，或直接粘贴文件的完整路径给对话'),
+          h('div', { key: 'g', className: 'qtp-dropGlyph' }, h(QuickTimeGlyph, { size: 44 })),
+          h('div', { key: 't', className: 'qtp-dropTitle' }, '把视频拖到这里'),
           h('button', {
             key: 'b',
             className: 'qtp-dropBtn',
-            onClick: function () { if (inputRef.current) inputRef.current.click() },
-          }, '选择本地文件'),
+            onClick: function (event) {
+              event.stopPropagation()
+              if (inputRef.current) inputRef.current.click()
+            },
+          }, '选择文件'),
           h('input', {
             key: 'i',
             ref: inputRef,
@@ -1539,7 +1541,6 @@ window.__ModuleLoader__.load({
             },
           }),
         ]),
-        h('div', { key: 'note', className: 'qtp-dropNote' }, '浏览器不给本地文件的真实路径，所以拖进来的文件能播但不能记忆进度；从文件树打开的可以。'),
       ])
     }
 

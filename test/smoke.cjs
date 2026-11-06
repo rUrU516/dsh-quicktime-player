@@ -194,7 +194,8 @@ const emptyHtml = renderToString(
 )
 console.log('empty html length:', emptyHtml.length)
 if (!emptyHtml.includes('qtp-empty')) throw new Error('page address did not render the empty pane')
-if (emptyHtml.includes('qtp-dropNote') === false) throw new Error('empty pane is missing its note')
+if (emptyHtml.includes('qtp-dropBtn') === false) throw new Error('empty pane is missing its file button')
+if (emptyHtml.includes('qtp-dropNote')) throw new Error('empty pane kept the verbose note')
 if (!paneHtml.includes('qtp-pane')) throw new Error('pane body did not render')
 
 const viewerHtml = renderToString(
