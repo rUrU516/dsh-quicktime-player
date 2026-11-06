@@ -16,6 +16,23 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
 <script>
   // ── stand in for the DSH module loader ────────────────────────────────────
+  // ── optional light theme: the same tokens the harness puts on <body> ─────
+  if (new URLSearchParams(location.search).get('theme') === 'light') {
+    var light = {
+      '--dsw-alias-bg-base': '#ffffff',
+      '--dsw-alias-bg-layer-1': '#f7f8fa',
+      '--dsw-alias-bg-layer-2': '#eceef2',
+      '--dsw-alias-bg-layer-3': 'rgba(0,0,0,.06)',
+      '--dsw-alias-label-primary': '#1b1d22',
+      '--dsw-alias-label-secondary': '#4a4f59',
+      '--dsw-alias-label-tertiary': '#6b7280',
+      '--dsw-alias-border-l1': 'rgba(0,0,0,.08)',
+      '--dsw-alias-border-l2': 'rgba(0,0,0,.14)',
+      '--dsw-alias-brand-primary': '#2f6feb',
+    }
+    Object.keys(light).forEach(function (name) { document.body.style.setProperty(name, light[name]) })
+  }
+
   window.__captured = null
   window.__ModuleLoader__ = {
     load: function (definition) { window.__captured = definition },

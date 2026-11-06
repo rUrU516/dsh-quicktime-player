@@ -30,6 +30,9 @@ capture and clip export.
   byte-identical to the source — no re-encode, cut on the nearest keyframe. Without `ffmpeg` the button says so.
 - **Check for updates.** The cloud button next to the camera asks the Host for this package's installed version and
   the registry's latest, then reports the answer in a small dialog. Manual only: no polling, no badge, no auto-install.
+- **Follows the harness theme.** The chrome (header, guide card, dialogs, toasts) is painted with DSH's own
+  `--dsw-alias-*` tokens, so a light theme gives a light player; the video stage stays dark because that is what sits
+  under the picture. Without the tokens it falls back to the dark palette it has always used.
 - **Built-in guide.** The `?` in the corner lays a click-through guide card over the player: one row per feature,
   with the same control glyphs you see in the toolbar. It is plain text — no arrows to keep in sync.
 - **Keyboard is never stolen.** While focus is inside the pane — even on a slider — <kbd>Space</kbd> and the arrows

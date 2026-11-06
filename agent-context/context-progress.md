@@ -88,6 +88,16 @@ Copy frame, clip export, the row-based guide, the larger controls and the manual
   stageWidth) / 2`, same for Y. Wired into the drag handler (deps include `zoom`, otherwise it clamps against 1× and
   snaps to zero) and into `applyZoom` so a wheel gesture cannot escape either.
 
+## Theme
+
+- DSH themes with `body[data-ds-dark-theme]` plus `--dsw-alias-*` custom properties (`bg-base`, `bg-layer-1..3`,
+  `label-primary/secondary/tertiary`, `border-l1/l2`, `brand-primary`). Custom properties inherit, so the player simply
+  consumes them: `.qtp-pane` maps them onto local `--qtp-*` names with the old dark values as fallbacks.
+- Only the chrome follows (header, guide card, dialog, toast, chips). The stage, transport bar and progress stay dark —
+  they sit over the picture and need dark contrast in both themes.
+- `color-mix(in srgb, var(--qtp-surface) 94%, transparent)` keeps the translucent card; Chrome serialises it as
+  `color(srgb …)`, which the test parses.
+
 ## Open
 
 - `-movflags +faststart` for clips and an exact-frame re-encode mode: offered, not decided.

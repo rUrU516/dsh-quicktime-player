@@ -606,6 +606,34 @@ async function runMode(cdp, base, mode, options = {}) {
     await cdp.send('Target.closeTarget', { targetId })
     return result.result ? result.result.value : null
   })()
+  report.theme = await (async () => {
+    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' })
+    const attached = await cdp.send('Target.attachToTarget', { targetId, flatten: true })
+    const sessionId = attached.sessionId
+    const evaluate = (expression, awaitPromise = false) => cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise }, sessionId)
+    await cdp.send('Page.enable', {}, sessionId)
+    await cdp.send('Page.navigate', { url: `${base}?mode=tab&theme=light` }, sessionId)
+    for (let i = 0; i < 60; i += 1) {
+      const probe = await evaluate(`!!document.querySelector('[data-qtp="help"]')`)
+      if (probe.result && probe.result.value === true) break
+      await sleep(250)
+    }
+    await evaluate(`document.querySelector('[data-qtp="help"]').click()`)
+    await sleep(500)
+    const result = await evaluate(`(() => {
+      const guide = document.querySelector('.qtp-guide')
+      const header = document.querySelector('.qtp-header')
+      if (!guide || !header) return null
+      return {
+        guide: getComputedStyle(guide).backgroundColor,
+        header: getComputedStyle(header).backgroundColor,
+        text: getComputedStyle(guide).color,
+      }
+    })()`)
+    await cdp.send('Target.closeTarget', { targetId })
+    return result.result ? result.result.value : null
+  })()
+
   } finally {
     cdp.close()
     child.kill('SIGKILL')
@@ -664,6 +692,24 @@ async function runMode(cdp, base, mode, options = {}) {
       if (Math.abs(pc.x) > pc.maxX + 1) bad.push(`pan: x escaped the frame (${pc.x} vs limit ${pc.maxX})`)
       if (Math.abs(pc.y) > pc.maxY + 1) bad.push(`pan: y escaped the frame (${pc.y} vs limit ${pc.maxY})`)
       if (Math.abs(pc.x) < pc.maxX - 2) bad.push(`pan: the drag did not reach the edge (${pc.x} vs limit ${pc.maxX})`)
+    }
+    const th = report.theme
+    if (!th) bad.push('theme: the light-theme probe did not run')
+    else {
+      const nums = (value) => {
+        const text = String(value)
+        const raw = (text.match(/[\d.]+/g) || []).map(Number).slice(0, 3)
+        // Chrome serialises color-mix() as color(srgb 0..1 ...)
+        return /color\(srgb/.test(text) ? raw.map((v) => (v <= 1 ? v * 255 : v)) : raw
+      }
+      const guide = nums(th.guide)
+      const header = nums(th.header)
+      const text = nums(th.text)
+      if (guide.length < 3 || header.length < 3) bad.push(`theme: could not read backgrounds (${th.guide} / ${th.header})`)
+      else {
+        if (guide[0] < 200 || header[0] < 200) bad.push(`theme: chrome stayed dark under a light theme (${th.guide})`)
+        if (text[0] > 120) bad.push(`theme: text did not follow the theme (${th.text})`)
+      }
     }
     const rem = report.remote
     if (!rem) bad.push('remote: the open/reveal probe did not run')
