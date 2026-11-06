@@ -57,8 +57,8 @@ window.__ModuleLoader__.load({
           { label: '\u7f29\u653e', text: '\u6eda\u8f6e\uff081\u00d7\u20138\u00d7\uff09' },
           { label: '\u5e73\u79fb', text: '\u653e\u5927\u540e\u62d6\u62fd' },
           { label: '\u5168\u5c4f', icon: 'expand', keys: ['F'], text: '\u6216\u53cc\u51fb\u753b\u9762' },
-          { label: '\u500d\u901f', icon: 'rate', text: '\u60ac\u505c\u5f39\u51fa\u6ed1\u6761\uff080.2\u00d7\u20135\u00d7\uff09' },
-          { label: '\u97f3\u91cf', icon: 'volume', text: '\u60ac\u505c\u5f39\u51fa\u6ed1\u6761' },
+          { label: '\u500d\u901f', icon: 'rate', text: '\u5f39\u7ad6\u6761\uff080.2\u00d7\u20135\u00d7\uff09' },
+          { label: '\u97f3\u91cf', icon: 'volume', text: '\u60ac\u505c\u5f39\u51fa\u7ad6\u6761' },
         ],
       },
       {
@@ -155,11 +155,10 @@ window.__ModuleLoader__.load({
       '.qtp-spacer{flex:1 1 auto}',
       '.qtp-rate{font-size:11px;font-variant-numeric:tabular-nums;min-width:34px}',
       '.qtp-anchor{position:relative;display:flex;align-items:center}',
-      '.qtp-flyout{position:relative;display:flex;align-items:center}',
-      '.qtp-flyoutExtra{position:absolute;right:100%;top:0;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:9px;background:rgba(12,14,18,.94);border:.5px solid rgba(255,255,255,.14);box-shadow:0 10px 26px rgba(0,0,0,.5);opacity:0;transform:translateX(8px);pointer-events:none;transition:opacity .16s ease,transform .16s ease;z-index:6}',
-      '.qtp-flyout[data-open=true] .qtp-flyoutExtra{opacity:1;transform:none;pointer-events:auto}',
-      '.qtp-slider{width:104px;margin:0;accent-color:#5b9dff;cursor:pointer}',
-      '.qtp-sliderValue{font-size:11px;color:#c3c9d4;font-variant-numeric:tabular-nums;min-width:30px;text-align:right}',
+      '.qtp-pop{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px;background:rgba(16,18,22,.97);border:.5px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);z-index:6}',
+      '.qtp-pop::after{content:"";position:absolute;left:0;right:0;bottom:-12px;height:12px}',
+      '.qtp-vslider{writing-mode:vertical-lr;direction:rtl;width:16px;height:92px;margin:0;accent-color:#5b9dff;cursor:pointer}',
+      '.qtp-popValue{font-size:11px;color:#c3c9d4;font-variant-numeric:tabular-nums}',
       '.qtp-hit{position:absolute;inset:0}',
       '.qtp-pane{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;min-width:0;background:#08090a}',
       '.qtp-pane .qtp-root{flex:1 1 auto;min-height:0}',
@@ -1164,37 +1163,37 @@ window.__ModuleLoader__.load({
 
               h('div', {
                 key: 'rate',
-                className: 'qtp-flyout',
-                'data-open': rateOpen ? 'true' : 'false',
+                className: 'qtp-anchor',
                 onPointerEnter: function () { setRateOpen(true) },
                 onPointerLeave: function () { setRateOpen(false) },
               }, [
-                h('div', { key: 'x', className: 'qtp-flyoutExtra' }, [
+                h('button', { key: 'b', className: 'qtp-btn qtp-rate', 'data-qtp': 'rate', title: '播放速度' }, formatRate(rate)),
+                rateOpen ? h('div', { key: 'p', className: 'qtp-pop' }, [
                   h('input', {
                     key: 's',
-                    className: 'qtp-slider',
+                    className: 'qtp-vslider',
                     type: 'range', min: 0.2, max: 5, step: 0.2,
                     value: rate,
                     onChange: function (event) { setRate(Number(event.target.value)) },
                     'aria-label': '播放速度',
                   }),
-                ]),
-                h('button', { key: 'b', className: 'qtp-btn qtp-rate', 'data-qtp': 'rate', title: '播放速度' }, formatRate(rate)),
+                  h('span', { key: 'v', className: 'qtp-popValue' }, formatRate(rate)),
+                ]) : null,
               ]),
 
               h('button', { key: 'loop', className: 'qtp-btn', 'data-qtp': 'loop', 'data-on': loop ? 'true' : 'false', onClick: function () { setLoop(!loop) }, title: '循环播放' }, h(IconLoop)),
 
               h('div', {
                 key: 'vol',
-                className: 'qtp-flyout',
-                'data-open': volumeOpen ? 'true' : 'false',
+                className: 'qtp-anchor',
                 onPointerEnter: function () { setVolumeOpen(true) },
                 onPointerLeave: function () { setVolumeOpen(false) },
               }, [
-                h('div', { key: 'x', className: 'qtp-flyoutExtra' }, [
+                h('button', { key: 'mute', className: 'qtp-btn', 'data-qtp': 'mute', onClick: toggleMute, title: '静音 (M)' }, IconVolume(!muted && volume > 0)),
+                volumeOpen ? h('div', { key: 'p', className: 'qtp-pop' }, [
                   h('input', {
                     key: 's',
-                    className: 'qtp-slider',
+                    className: 'qtp-vslider',
                     type: 'range', min: 0, max: 1, step: 0.02,
                     value: muted ? 0 : volume,
                     onChange: function (event) {
@@ -1204,9 +1203,8 @@ window.__ModuleLoader__.load({
                     },
                     'aria-label': '音量',
                   }),
-                  h('span', { key: 'v', className: 'qtp-sliderValue' }, Math.round((muted ? 0 : volume) * 100) + '%'),
-                ]),
-                h('button', { key: 'mute', className: 'qtp-btn', 'data-qtp': 'mute', onClick: toggleMute, title: '静音 (M)' }, IconVolume(!muted && volume > 0)),
+                  h('span', { key: 'v', className: 'qtp-popValue' }, Math.round((muted ? 0 : volume) * 100) + '%'),
+                ]) : null,
               ]),
 
               h('button', { key: 'pip', className: 'qtp-btn', 'data-qtp': 'pip', onClick: togglePip, title: '画中画' }, h(IconPip)),
